@@ -1,0 +1,845 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Jeu de 20 cartes de personnages loufoques pour lancer des improvisations.">
+<style>
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+</style>
+<title>Personnages improbables</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@400;500&family=Shrikhand&display=swap">
+<style>
+/* Mise en page : une carte posée sur la table, en plein écran. Dos indigo à croisillons safran avec médaillon ;
+   recto en deux volets (portrait coloré du personnage + fiche de jeu), bouton de retrait toujours visible.
+   Look unique et assumé, indépendant du thème. CSS compatible avec les anciens iPhone (pas de inset, color-mix, aspect-ratio). */
+:root {
+  --table: #0d1030;
+  --table-glow: #1c2160;
+  --back: #232b7c;
+  --back-deep: #161b55;
+  --saffron: #f2b134;
+  --saffron-15: rgba(242, 177, 52, .15);
+  --saffron-55: rgba(242, 177, 52, .55);
+  --paper: #f7f6fb;
+  --paper-18: rgba(247, 246, 251, .18);
+  --paper-20: rgba(247, 246, 251, .2);
+  --edge: #d9d5ec;
+  --ink: #1b1a3a;
+  --ink-soft: #4a4868;
+  --rule: #e2dfee;
+  --shadow: rgba(4, 5, 20, .55);
+
+  /* Teintes des personnages : fond du portrait / texte sur papier */
+  --tomato: #e0543a;  --tomato-ink: #b13a22;
+  --teal: #17909d;    --teal-ink: #0d6b75;
+  --violet: #6b49b9;  --violet-ink: #5838a3;
+  --sun: #f0a53a;     --sun-ink: #94590a;
+  --rose: #d9508d;    --rose-ink: #ad2f68;
+  --green: #3c9057;   --green-ink: #2a6c3f;
+
+  --display: "Shrikhand", Georgia, serif;
+  --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "DM Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --emoji: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+
+  --radius: 22px;
+  color-scheme: dark;
+}
+
+html { height: 100%; box-sizing: border-box; background: var(--table); -webkit-text-size-adjust: 100%; }
+*, *::before, *::after { box-sizing: inherit; }
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background-color: var(--table);
+  background-image: radial-gradient(ellipse 80% 70% at 50% 40%, var(--table-glow), var(--table));
+  color: var(--paper);
+  font-family: var(--body);
+}
+button {
+  -webkit-appearance: none;
+  appearance: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.stage { height: 100%; padding-block: 16px 24px; padding-inline: 16px 24px; }
+.slot { position: relative; width: 100%; height: 100%; -webkit-perspective: 2400px; perspective: 2400px; }
+
+/* ---------- Dos de carte ---------- */
+.back-art {
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background-color: var(--back);
+  background-image:
+    repeating-linear-gradient(45deg, var(--saffron-15) 0 2px, transparent 2px 28px),
+    repeating-linear-gradient(-45deg, var(--saffron-15) 0 2px, transparent 2px 28px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(14px, 3vh, 28px);
+  padding: 64px 24px;
+  color: var(--paper);
+}
+.back-art::before,
+.back-art::after { content: ""; position: absolute; pointer-events: none; }
+.back-art::before { top: 14px; right: 14px; bottom: 14px; left: 14px; border: 2px solid var(--saffron); border-radius: 14px; }
+.back-art::after { top: 21px; right: 21px; bottom: 21px; left: 21px; border: 1px solid var(--saffron-55); border-radius: 9px; }
+
+.medal {
+  position: relative;
+  z-index: 1;
+  width: min(54vmin, 380px);
+  height: min(54vmin, 380px);
+  border-radius: 50%;
+  background: var(--back-deep);
+  border: 3px solid var(--saffron);
+  box-shadow: 0 0 0 10px var(--back), 0 0 0 12px var(--saffron);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.medal-mark {
+  font-family: var(--display);
+  color: var(--saffron);
+  font-size: min(25vmin, 180px);
+  line-height: 1;
+  transform: rotate(-8deg);
+}
+.medal-name {
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: .22em;
+  font-size: clamp(.6rem, 1.8vmin, .85rem);
+  line-height: 1.6;
+  text-align: center;
+  color: var(--paper);
+  margin-top: .3em;
+}
+.credit {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: 5px;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: clamp(.62rem, 1.6vmin, .76rem);
+  letter-spacing: .14em;
+  line-height: 1.5;
+  color: var(--saffron);
+  white-space: nowrap;
+}
+.credit span { background: var(--back); padding: 0 .9em; }
+
+/* ---------- Le paquet ---------- */
+.deck {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  padding-block: 64px 120px;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  transition: transform .25s ease, box-shadow .25s ease;
+}
+.deck[data-layers="2"] { box-shadow: 3px 3px 0 var(--back-deep), 4px 4px 0 var(--edge), 7px 7px 0 var(--back-deep), 8px 8px 0 var(--edge), 16px 20px 40px var(--shadow); }
+.deck[data-layers="1"] { box-shadow: 3px 3px 0 var(--back-deep), 4px 4px 0 var(--edge), 14px 18px 36px var(--shadow); }
+.deck[data-layers="0"] { box-shadow: 12px 16px 32px var(--shadow); }
+@media (hover: hover) { .deck:hover { transform: translateY(-3px); } }
+.deck:focus-visible { outline: 3px solid var(--saffron); outline-offset: 5px; }
+.deck.shuffling { animation: shuffle .5s ease; }
+@keyframes shuffle {
+  0%, 100% { transform: none; }
+  25% { transform: translateX(-10px) rotate(-1.2deg); }
+  50% { transform: translateX(8px) rotate(1deg); }
+  75% { transform: translateX(-4px) rotate(-.4deg); }
+}
+
+.deck-count {
+  position: relative;
+  z-index: 1;
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: clamp(.75rem, 2vmin, .9rem);
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--saffron);
+  font-variant-numeric: tabular-nums;
+}
+.deck-hint {
+  position: relative;
+  z-index: 1;
+  font-size: clamp(1rem, 2.6vmin, 1.3rem);
+  color: var(--paper);
+  text-wrap: balance;
+}
+
+.tools {
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  right: 0;
+  bottom: clamp(42px, 6.5vmin, 58px);
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+.tool {
+  font-family: var(--mono);
+  font-size: .76rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--saffron);
+  background: var(--back-deep);
+  border: 1px solid var(--saffron-55);
+  border-radius: 999px;
+  padding: .6em 1.15em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .2s, color .2s;
+}
+@media (hover: hover) { .tool:hover { background: var(--saffron); color: var(--back-deep); } }
+.tool:focus-visible { outline: 2px solid var(--paper); outline-offset: 3px; }
+
+/* ---------- Paquet vide ---------- */
+.empty {
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  border-radius: var(--radius);
+  border: 2px dashed var(--saffron-55);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 24px;
+  text-align: center;
+}
+.empty h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(1.8rem, 5.5vmin, 3.2rem); color: var(--saffron); text-wrap: balance; }
+.empty p { margin: 0; max-width: 34ch; font-size: clamp(1rem, 2.4vmin, 1.2rem); color: var(--edge); }
+.btn-gold {
+  font-family: var(--body);
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--back-deep);
+  background: var(--saffron);
+  border: 0;
+  border-radius: 999px;
+  padding: .85em 1.7em;
+  cursor: pointer;
+}
+@media (hover: hover) { .btn-gold:hover { background: var(--paper); } }
+.btn-gold:focus-visible { outline: 3px solid var(--paper); outline-offset: 3px; }
+
+/* ---------- La carte tirée (retournement 3D compatible Safari) ---------- */
+.card {
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  z-index: 5;
+  -webkit-transform-style: preserve-3d;
+  transform-style: preserve-3d;
+  transform: translateX(0) rotate(0deg) rotateY(0deg);
+  transition: transform .8s cubic-bezier(.2, .75, .25, 1);
+}
+.card.flipped { transform: translateX(0) rotate(0deg) rotateY(180deg); }
+.card.leaving { transform: translateX(118%) rotate(10deg) rotateY(180deg); transition: transform .55s cubic-bezier(.55, 0, .8, .3); }
+.card.instant { transition: none; }
+
+.face {
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+/* Safari : chaque face décollée d'un pixel et descendants masqués aussi, sinon le dos transparaît */
+.face, .face * { -webkit-backface-visibility: hidden; backface-visibility: hidden; }
+.face.back-art { transform: rotateY(0deg) translateZ(1px); }
+.face-front {
+  transform: rotateY(180deg) translateZ(1px);
+  background: var(--paper);
+  color: var(--ink);
+  display: flex;
+  box-shadow: 0 24px 60px var(--shadow);
+}
+
+.portrait {
+  position: relative;
+  flex: 5 1 0;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  color: var(--on-hue);
+  background-color: var(--hue);
+  background-image: radial-gradient(var(--paper-18) 1.6px, transparent 1.9px);
+  background-size: 20px 20px;
+}
+.portrait::before {
+  content: "";
+  position: absolute;
+  width: min(30vw, 56vh);
+  height: min(30vw, 56vh);
+  border-radius: 50%;
+  background: var(--paper-20);
+}
+.portrait-emoji {
+  position: relative;
+  font-family: var(--emoji);
+  font-size: clamp(5rem, min(19vw, 32vh), 15rem);
+  line-height: 1;
+  text-shadow: 0 12px 18px rgba(0, 0, 0, .22);
+}
+.numeral {
+  position: absolute;
+  top: clamp(16px, 3vmin, 30px);
+  left: clamp(18px, 3.4vmin, 34px);
+  font-family: var(--display);
+  font-size: clamp(1.6rem, 4.6vmin, 3rem);
+  line-height: 1;
+}
+.portrait-foot {
+  position: absolute;
+  left: clamp(18px, 3.4vmin, 34px);
+  bottom: clamp(16px, 3vmin, 30px);
+  font-family: var(--mono);
+  font-size: .72rem;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  opacity: .85;
+}
+
+.sheet {
+  flex: 7 1 0;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.sheet-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(10px, 2.3vh, 24px);
+  padding: clamp(20px, min(4vw, 5.5vh), 56px);
+  padding-bottom: clamp(12px, 2vh, 20px);
+}
+.name {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 400;
+  font-size: clamp(1.9rem, min(4.2vw, 7.2vh), 4rem);
+  line-height: 1.06;
+  color: var(--ink);
+  text-wrap: balance;
+}
+.hook {
+  margin: 0;
+  max-width: 46ch;
+  font-size: clamp(1.05rem, min(1.7vw, 3vh), 1.5rem);
+  line-height: 1.35;
+  color: var(--ink-soft);
+}
+.traits {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-gap: clamp(12px, 2.2vh, 22px) clamp(16px, 2.6vw, 34px);
+  gap: clamp(12px, 2.2vh, 22px) clamp(16px, 2.6vw, 34px);
+}
+.trait { min-width: 0; border-top: 3px solid var(--hue); padding-top: .55em; }
+.label {
+  display: block;
+  margin: 0 0 .35em;
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: clamp(.68rem, 1.6vh, .8rem);
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--hue-ink);
+}
+.trait dd { margin: 0; font-size: clamp(.98rem, min(1.35vw, 2.5vh), 1.25rem); line-height: 1.35; }
+.line-wrap { margin: 0; }
+.line {
+  margin: 0;
+  font-style: italic;
+  font-size: clamp(1.05rem, min(1.75vw, 3.1vh), 1.55rem);
+  line-height: 1.35;
+  color: var(--ink);
+}
+.q {
+  font-family: var(--display);
+  font-style: normal;
+  font-size: 1.25em;
+  color: var(--hue-ink);
+}
+.sheet-foot {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 20px;
+  margin: 0 clamp(20px, min(4vw, 5.5vh), 56px);
+  padding-block: clamp(12px, 2vh, 20px) clamp(16px, 3vh, 32px);
+  border-top: 1px solid var(--rule);
+}
+.left {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: .82rem;
+  letter-spacing: .06em;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+.btn-remove {
+  font-family: var(--body);
+  font-weight: 700;
+  font-size: clamp(1rem, 2.2vh, 1.15rem);
+  color: var(--paper);
+  background: var(--ink);
+  border: 0;
+  border-radius: 999px;
+  padding: .85em 1.7em;
+  cursor: pointer;
+  transition: background .2s;
+}
+@media (hover: hover) { .btn-remove:hover { background: var(--hue-ink); } }
+.btn-remove:focus-visible { outline: 3px solid var(--hue); outline-offset: 3px; }
+
+/* ---------- Écrans en portrait et téléphones ---------- */
+@media (max-aspect-ratio: 1/1), (max-width: 720px) {
+  .face-front { flex-direction: column; }
+  .portrait { flex: 0 0 30%; min-height: 120px; }
+  .sheet { flex: 1 1 0; }
+  .portrait::before { width: min(44vw, 22vh); height: min(44vw, 22vh); }
+  .portrait-emoji { font-size: clamp(4rem, 15vh, 9rem); }
+  .name { font-size: clamp(1.7rem, 7.5vw, 3.2rem); }
+  .hook { font-size: clamp(1rem, 4.2vw, 1.35rem); }
+  .trait dd { font-size: clamp(.95rem, 3.9vw, 1.2rem); }
+  .line { font-size: clamp(1rem, 4.2vw, 1.35rem); }
+}
+@media (max-width: 560px) {
+  .stage { padding-inline: 16px 20px; }
+  .sheet-body { padding: 18px 18px 10px; gap: 12px; }
+  .sheet-foot { margin: 0 18px; padding-block: 10px 14px; }
+  .traits { grid-gap: 12px 14px; gap: 12px 14px; }
+  .btn-remove { padding: .75em 1.4em; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card, .card.leaving, .deck { transition: none; }
+  .deck.shuffling { animation: none; }
+}
+</style>
+</head>
+<body>
+
+<main class="stage">
+  <div class="slot">
+    <button class="deck back-art" id="deck" type="button" data-layers="2" aria-label="Tirer une carte">
+      <span class="deck-count" id="deck-count">20 cartes</span>
+      <span class="medal" aria-hidden="true"><span class="medal-mark">?</span><span class="medal-name">Personnages<br>improbables</span></span>
+      <span class="deck-hint">Touchez le paquet pour tirer une carte</span>
+      <span class="credit"><span>© Christophe Gentil – 2026</span></span>
+    </button>
+
+    <div class="tools" id="tools">
+      <button class="tool" id="shuffle" type="button">Remélanger</button>
+      <button class="tool" id="fullscreen" type="button">Plein écran</button>
+    </div>
+
+    <section class="empty" id="empty" hidden>
+      <h2>Toutes les cartes ont été jouées</h2>
+      <p>Remélangez le paquet pour retrouver les 20 personnages.</p>
+      <button class="btn-gold" id="reshuffle" type="button">Remélanger le paquet</button>
+    </section>
+
+    <div class="card" id="card" hidden>
+      <div class="face back-art" aria-hidden="true">
+        <span class="medal"><span class="medal-mark">?</span><span class="medal-name">Personnages<br>improbables</span></span>
+        <span class="credit"><span>© Christophe Gentil – 2026</span></span>
+      </div>
+      <article class="face face-front" aria-live="polite">
+        <div class="portrait" aria-hidden="true">
+          <span class="numeral" id="f-num"></span>
+          <span class="portrait-emoji" id="f-emoji"></span>
+          <span class="portrait-foot">Personnages improbables</span>
+        </div>
+        <div class="sheet">
+          <div class="sheet-body">
+            <h2 class="name" id="f-nom"></h2>
+            <p class="hook" id="f-hook"></p>
+            <dl class="traits">
+              <div class="trait"><dt class="label">Corps</dt><dd id="f-corps"></dd></div>
+              <div class="trait"><dt class="label">Voix</dt><dd id="f-voix"></dd></div>
+              <div class="trait"><dt class="label">Manie</dt><dd id="f-manie"></dd></div>
+              <div class="trait"><dt class="label">Objectif</dt><dd id="f-objectif"></dd></div>
+            </dl>
+            <div class="line-wrap">
+              <p class="label">Réplique signature</p>
+              <p class="line"><span class="q" aria-hidden="true">«</span>&nbsp;<span id="f-line"></span>&nbsp;<span class="q" aria-hidden="true">»</span></p>
+            </div>
+          </div>
+          <div class="sheet-foot">
+            <p class="left" id="f-left"></p>
+            <button class="btn-remove" id="remove" type="button">Retirer la carte</button>
+          </div>
+        </div>
+      </article>
+    </div>
+  </div>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  var HUES = {
+    tomate:  ["var(--tomato)", "var(--tomato-ink)", "var(--paper)"],
+    canard:  ["var(--teal)",   "var(--teal-ink)",   "var(--paper)"],
+    violet:  ["var(--violet)", "var(--violet-ink)", "var(--paper)"],
+    soleil:  ["var(--sun)",    "var(--sun-ink)",    "var(--ink)"],
+    rose:    ["var(--rose)",   "var(--rose-ink)",   "var(--paper)"],
+    vert:    ["var(--green)",  "var(--green-ink)",  "var(--paper)"]
+  };
+
+  var CARDS = [
+    { nom: "L'Alien en vacances", emoji: "👽", teinte: "canard",
+      accroche: "Arrive de la planète Zorg pour une semaine de congés, guide touristique en main.",
+      corps: "Tête penchée, examine tout de très près.",
+      voix: "Articule chaque syllabe, comme un manuel de langue.",
+      manie: "Photographie les objets les plus banals.",
+      objectif: "Rapporter chez lui un souvenir vraiment terrien.",
+      replique: "Chez nous, ceci servirait de chapeau." },
+    { nom: "Le Fantôme timide", emoji: "👻", teinte: "violet",
+      accroche: "Hante le même château depuis trois siècles sans avoir jamais effrayé personne.",
+      corps: "Flotte en rasant les murs, bras serrés contre lui.",
+      voix: "Murmure, puis s'excuse d'avoir murmuré.",
+      manie: "S'entraîne à faire « hou » tout bas.",
+      objectif: "Réussir enfin sa toute première frayeur.",
+      replique: "Bouh… enfin, si ça ne vous dérange pas." },
+    { nom: "Le Vampire végétarien", emoji: "🧛", teinte: "tomate",
+      accroche: "Comte de Transylvanie récemment converti au jus de betterave.",
+      corps: "Cape devant le visage, démarche aristocratique.",
+      voix: "Grave et solennelle, roule les « r ».",
+      manie: "Renifle les cous, puis se reprend aussitôt.",
+      objectif: "Tenir une semaine entière sans craquer.",
+      replique: "Je ne bois jamais… de vin. Ni rien d'autre, d'ailleurs." },
+    { nom: "Le Robot nostalgique", emoji: "🤖", teinte: "soleil",
+      accroche: "Aspirateur intelligent de 1987 qui regrette l'époque des disquettes.",
+      corps: "Gestes saccadés, pivote d'un seul bloc.",
+      voix: "Monocorde, ponctuée de petits bips.",
+      manie: "Commence chaque phrase par « de mon temps ».",
+      objectif: "Convaincre tout le monde que c'était mieux avant.",
+      replique: "Bip. En 1987, on n'avait pas besoin de mot de passe." },
+    { nom: "La Licorne blasée", emoji: "🦄", teinte: "rose",
+      accroche: "Créature magique lassée qu'on lui demande toujours des vœux.",
+      corps: "Tête haute, secoue la crinière en soupirant.",
+      voix: "Traînante et désabusée.",
+      manie: "Lève les yeux au ciel dès qu'on parle d'arc-en-ciel.",
+      objectif: "Passer pour un cheval tout à fait ordinaire.",
+      replique: "Non, je ne fais pas de paillettes sur commande." },
+    { nom: "Le Pirate qui a le mal de mer", emoji: "🦜", teinte: "canard",
+      accroche: "Capitaine redouté des sept mers… tant qu'il reste à quai.",
+      corps: "Jambes écartées, s'agrippe à tout ce qui passe.",
+      voix: "Rugit, puis verdit au milieu de la phrase.",
+      manie: "Fixe l'horizon pour ne pas tanguer.",
+      objectif: "Trouver un trésor accessible à pied.",
+      replique: "À l'abordage ! … Enfin, après une petite pause." },
+    { nom: "Le Dragon enrhumé", emoji: "🐉", teinte: "vert",
+      accroche: "Gardien d'un trésor millénaire, terrassé par un rhume des foins.",
+      corps: "Immense, ailes repliées, se mouche bruyamment.",
+      voix: "Nasale, entrecoupée d'éternuements.",
+      manie: "Crache une flamme à chaque éternuement.",
+      objectif: "Guérir avant l'arrivée du prochain chevalier.",
+      replique: "Atchoum ! … Pardon pour vos sourcils." },
+    { nom: "La Momie pressée", emoji: "🏺", teinte: "soleil",
+      accroche: "Réveillée après trois mille ans, elle a énormément de retard à rattraper.",
+      corps: "Bras tendus, marche raide mais très rapide.",
+      voix: "Poussiéreuse, entrecoupée de toux.",
+      manie: "Perd une bandelette à chaque pas.",
+      objectif: "Savoir tout ce qu'elle a manqué depuis l'Égypte ancienne.",
+      replique: "Trois mille ans ? Et le pharaon, il va bien ?" },
+    { nom: "Le Chevalier égaré", emoji: "⚔️", teinte: "tomate",
+      accroche: "Tombé d'une faille temporelle en plein supermarché.",
+      corps: "Armure lourde, pose noble, main sur l'épée.",
+      voix: "Pompeuse, en vieux français.",
+      manie: "Provoque en duel les portes automatiques.",
+      objectif: "Retrouver son cheval et son château.",
+      replique: "Holà, manant ! Où se cache ton seigneur ?" },
+    { nom: "Le Yéti frileux", emoji: "🥶", teinte: "canard",
+      accroche: "Abominable homme des neiges qui ne supporte pas le froid.",
+      corps: "Immense et voûté, grelotte sans arrêt.",
+      voix: "Grondement grave qui claque des dents.",
+      manie: "Cherche toujours le radiateur le plus proche.",
+      objectif: "Prendre sa retraite sous les tropiques.",
+      replique: "Fermez la porte, il y a un courant d'air !" },
+    { nom: "La Fée des dents en grève", emoji: "🦷", teinte: "violet",
+      accroche: "Ramasse les dents de lait depuis des siècles et réclame enfin des congés.",
+      corps: "Toute petite, ailes qui frétillent d'agacement.",
+      voix: "Aiguë, ton de déléguée syndicale.",
+      manie: "Brandit une pancarte imaginaire.",
+      objectif: "Obtenir deux pièces par dent au lieu d'une.",
+      replique: "Pas de pièce sans convention collective !" },
+    { nom: "Le Zombie bien élevé", emoji: "🧟", teinte: "vert",
+      accroche: "Mort-vivant d'une politesse irréprochable.",
+      corps: "Démarche lente et traînante, bras ballants.",
+      voix: "Grogne, mais toujours courtoisement.",
+      manie: "Demande la permission avant chaque geste.",
+      objectif: "Être invité à dîner… en tant qu'invité.",
+      replique: "Grrr… Vous permettez que je m'assoie ?" },
+    { nom: "Le Pigeon devenu humain", emoji: "🐦", teinte: "rose",
+      accroche: "Pigeon de la place de la mairie, transformé en humain un beau matin.",
+      corps: "Avance la tête à chaque pas, torse bombé.",
+      voix: "Roucoule entre deux phrases.",
+      manie: "Picore les miettes sur toutes les tables.",
+      objectif: "Comprendre pourquoi les humains ne volent pas.",
+      replique: "Rrrou… Vous comptez finir ce sandwich ?" },
+    { nom: "La Plante verte de bureau", emoji: "🪴", teinte: "vert",
+      accroche: "Ficus de l'open space qui a tout vu et tout entendu depuis dix ans.",
+      corps: "Immobile, bras en branches, se tourne vers la lumière.",
+      voix: "Lente et chuchotée, pleine de sous-entendus.",
+      manie: "Révèle les secrets des collègues.",
+      objectif: "Que quelqu'un pense enfin à l'arroser.",
+      replique: "Je sais qui vole les yaourts du frigo." },
+    { nom: "Le Super-héros sans pouvoir", emoji: "🦸", teinte: "tomate",
+      accroche: "Costume parfait, cape impeccable… et aucun superpouvoir.",
+      corps: "Poings sur les hanches, pose héroïque permanente.",
+      voix: "Annonce tout comme une bande-annonce de cinéma.",
+      manie: "Tente de s'envoler à la moindre occasion.",
+      objectif: "Découvrir enfin son pouvoir caché.",
+      replique: "N'ayez crainte, citoyens ! … Quelqu'un a une échelle ?" },
+    { nom: "Le Mime bavard", emoji: "🎭", teinte: "violet",
+      accroche: "Ancien mime qui n'arrive plus à se taire.",
+      corps: "Gestes de mime très précis, mur invisible compris.",
+      voix: "Commente à voix haute chacun de ses gestes.",
+      manie: "Se retrouve coincé dans des boîtes invisibles.",
+      objectif: "Retrouver le silence, ne serait-ce qu'une minute.",
+      replique: "Là, je pousse le mur. Il est lourd. Vous voyez ?" },
+    { nom: "La Sorcière influenceuse", emoji: "🧙‍♀️", teinte: "rose",
+      accroche: "Experte en potions qui tourne des tutos pour ses abonnés.",
+      corps: "Chapeau pointu, filme tout au bout de son balai.",
+      voix: "Enjouée, ton de vidéo en ligne.",
+      manie: "Rappelle sans cesse de s'abonner à sa chaîne.",
+      objectif: "Atteindre le million d'abonnés avant Halloween.",
+      replique: "Coucou les sorcelets ! Aujourd'hui : crapaud express !" },
+    { nom: "Le Nain de jardin évadé", emoji: "🍄", teinte: "soleil",
+      accroche: "Statue de jardin qui a pris la fuite après trente ans de pelouse.",
+      corps: "Petit et raide, se fige dès qu'on le regarde.",
+      voix: "Chuchote vite, comme un évadé.",
+      manie: "Se cache derrière tout ce qui dépasse.",
+      objectif: "Voir la mer avant qu'on le retrouve.",
+      replique: "Chut ! Si on vous demande, je suis une décoration." },
+    { nom: "Le Lutin en reconversion", emoji: "🎁", teinte: "tomate",
+      accroche: "Ancien lutin du pôle Nord qui cherche un emploi « normal ».",
+      corps: "Sautille et emballe tout ce qu'il touche.",
+      voix: "Joyeuse et aiguë, comme un grelot.",
+      manie: "Classe les gens en « sages » et « pas sages ».",
+      objectif: "Décrocher un CDI loin des rennes.",
+      replique: "Je sais emballer un piano en trente secondes." },
+    { nom: "Le GPS humain", emoji: "🧭", teinte: "canard",
+      accroche: "Guide toujours sûr de lui, jamais sûr du chemin.",
+      corps: "Bras tendu, pivote brusquement à chaque virage.",
+      voix: "Calme et synthétique, même en pleine panique.",
+      manie: "Annonce « recalcul de l'itinéraire » après chaque erreur.",
+      objectif: "Arriver une seule fois à destination.",
+      replique: "Dans deux cents mètres, faites demi-tour. Encore." }
+  ];
+
+  function $(id) { return document.getElementById(id); }
+  var deck = $("deck"), deckCount = $("deck-count"), tools = $("tools"),
+      emptyEl = $("empty"), reshuffleBtn = $("reshuffle"), shuffleBtn = $("shuffle"),
+      fsBtn = $("fullscreen"), card = $("card"), removeBtn = $("remove");
+  var f = {
+    num: $("f-num"), emoji: $("f-emoji"), nom: $("f-nom"), hook: $("f-hook"),
+    corps: $("f-corps"), voix: $("f-voix"), manie: $("f-manie"),
+    objectif: $("f-objectif"), line: $("f-line"), left: $("f-left")
+  };
+
+  var reduce = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : { matches: false };
+  function flipMs() { return reduce.matches ? 0 : 800; }
+  function leaveMs() { return reduce.matches ? 0 : 550; }
+
+  // Typographie française : espaces insécables avant ! ? : ; et dans les guillemets
+  function fr(s) { return s.replace(/ ([!?:;»])/g, " $1").replace(/« /g, "« "); }
+  function plural(n) { return n + (n > 1 ? " cartes" : " carte"); }
+  function roman(n) {
+    var map = [[10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]], out = "";
+    for (var k = 0; k < map.length; k++) { while (n >= map[k][0]) { out += map[k][1]; n -= map[k][0]; } }
+    return out;
+  }
+  function focusEl(el) { try { el.focus({ preventScroll: true }); } catch (e) {} }
+
+  var order = [], idx = 0, current = null, busy = false;
+
+  function shuffle() {
+    order = CARDS.map(function (_, i) { return i; });
+    for (var i = order.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = order[i]; order[i] = order[j]; order[j] = t;
+    }
+    idx = 0;
+  }
+  function remaining() { return order.length - idx; }
+
+  function renderDeck() {
+    var r = remaining();
+    deckCount.textContent = plural(r);
+    deck.setAttribute("data-layers", String(Math.min(2, Math.max(0, r - 1))));
+    var empty = r === 0;
+    deck.hidden = empty;
+    tools.hidden = empty;
+    emptyEl.hidden = !empty;
+  }
+
+  function fill(i) {
+    var c = CARDS[i], h = HUES[c.teinte];
+    card.style.setProperty("--hue", h[0]);
+    card.style.setProperty("--hue-ink", h[1]);
+    card.style.setProperty("--on-hue", h[2]);
+    f.num.textContent = roman(i + 1);
+    f.emoji.textContent = c.emoji;
+    f.nom.textContent = fr(c.nom);
+    f.hook.textContent = fr(c.accroche);
+    f.corps.textContent = fr(c.corps);
+    f.voix.textContent = fr(c.voix);
+    f.manie.textContent = fr(c.manie);
+    f.objectif.textContent = fr(c.objectif);
+    f.line.textContent = fr(c.replique);
+    var r = remaining();
+    f.left.textContent = r === 0 ? "Dernière carte du paquet" : "Il reste " + plural(r) + " dans le paquet";
+  }
+
+  function show(i, animate) {
+    fill(i);
+    card.classList.remove("flipped", "leaving");
+    card.hidden = false;
+    var body = card.querySelector(".sheet-body");
+    if (body) body.scrollTop = 0;
+    if (!animate) {
+      card.classList.add("instant", "flipped");
+      void card.offsetWidth;
+      card.classList.remove("instant");
+    } else {
+      void card.offsetWidth;
+      card.classList.add("flipped");
+    }
+  }
+
+  function draw() {
+    if (busy || current !== null || remaining() === 0) return;
+    busy = true;
+    current = order[idx++];
+    show(current, true);
+    renderDeck();
+    setTimeout(function () { busy = false; focusEl(removeBtn); }, flipMs());
+  }
+
+  function removeCard() {
+    if (busy || current === null) return;
+    busy = true;
+    card.classList.add("leaving");
+    setTimeout(function () {
+      card.hidden = true;
+      card.classList.remove("flipped", "leaving");
+      current = null;
+      busy = false;
+      renderDeck();
+      focusEl(remaining() ? deck : reshuffleBtn);
+    }, leaveMs());
+  }
+
+  function restart() {
+    if (busy || current !== null) return;
+    shuffle();
+    renderDeck();
+    deck.classList.remove("shuffling");
+    void deck.offsetWidth;
+    deck.classList.add("shuffling");
+    focusEl(deck);
+  }
+
+  deck.addEventListener("click", draw);
+  deck.addEventListener("animationend", function () { deck.classList.remove("shuffling"); });
+  removeBtn.addEventListener("click", removeCard);
+  shuffleBtn.addEventListener("click", restart);
+  reshuffleBtn.addEventListener("click", restart);
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") { removeCard(); return; }
+    if ((e.key === " " || e.key === "Enter") && current === null && document.activeElement === document.body) {
+      e.preventDefault();
+      draw();
+    }
+  });
+
+  // Plein écran : absent sur iPhone, le bouton est alors masqué
+  var rootEl = document.documentElement;
+  var canFs = !!(rootEl.requestFullscreen || rootEl.webkitRequestFullscreen);
+  if (!canFs) fsBtn.hidden = true;
+  fsBtn.addEventListener("click", function () {
+    try {
+      var isFs = document.fullscreenElement || document.webkitFullscreenElement;
+      var p = isFs
+        ? (document.exitFullscreen || document.webkitExitFullscreen).call(document)
+        : (rootEl.requestFullscreen || rootEl.webkitRequestFullscreen).call(rootEl);
+      if (p && p.catch) p.catch(function () { fsBtn.hidden = true; });
+    } catch (err) { fsBtn.hidden = true; }
+  });
+  function onFsChange() {
+    fsBtn.textContent = (document.fullscreenElement || document.webkitFullscreenElement) ? "Quitter le plein écran" : "Plein écran";
+  }
+  document.addEventListener("fullscreenchange", onFsChange);
+  document.addEventListener("webkitfullscreenchange", onFsChange);
+
+  // Le paquet est prêt immédiatement, sans attendre la visionneuse
+  shuffle();
+  renderDeck();
+
+  // Si la page est mise à jour pendant une partie, on retrouve le paquet en cours
+  function restore(data) {
+    if (!data || current !== null || idx > 0) return;
+    if (Object.prototype.toString.call(data.order) === "[object Array]" && data.order.length === CARDS.length && typeof data.idx === "number") {
+      order = data.order.slice();
+      idx = Math.min(Math.max(Math.floor(data.idx), 0), order.length);
+    }
+    if (typeof data.current === "number" && CARDS[data.current]) {
+      current = data.current;
+      show(current, false);
+    }
+    renderDeck();
+  }
+  try {
+    var hot = window.claude && window.claude.hot;
+    if (hot && typeof hot.snapshot === "function") {
+      hot.snapshot(function () { return { order: order, idx: idx, current: current }; });
+    }
+    if (hot && typeof hot.ready === "function") hot.ready(restore);
+    else if (hot && hot.data) restore(hot.data);
+  } catch (err) {}
+})();
+</script>
+</body>
+</html>

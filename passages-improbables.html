@@ -1,0 +1,650 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Jeu de 20 cartes d'improvisation : un lieu de départ, un objet de passage, un lieu d'arrivée.">
+<style>
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+</style>
+<title>Passages improbables</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@400;500&family=Shrikhand&display=swap">
+<style>
+/* Mise en page : une carte compacte (la moitié d'un écran de téléphone) posée au centre de la table, commandes juste en dessous.
+   Dos vert canard à croisillons safran avec médaillon « & » ; recto en billet de voyage : départ, objet de passage, arrivée,
+   reliés par un trajet pointillé. Look unique et assumé, indépendant du thème.
+   CSS compatible avec les anciens iPhone : valeurs de repli avant chaque unité cqmin, pas de inset, color-mix ni aspect-ratio. */
+:root {
+  --table: #061c1e;
+  --table-glow: #0e3a3c;
+  --back: #0d5a55;
+  --back-deep: #073b38;
+  --saffron: #f2b134;
+  --saffron-15: rgba(242, 177, 52, .15);
+  --saffron-55: rgba(242, 177, 52, .55);
+  --paper: #f6f8f7;
+  --edge: #d5e3e0;
+  --ink: #172629;
+  --ink-soft: #4b5c60;
+  --rule: #d9e2e0;
+  --rail: #a9bbb8;
+  --shadow: rgba(2, 10, 12, .55);
+
+  /* Teintes des cartes : fond de l'objet / texte sur papier */
+  --tomato: #e0543a;  --tomato-ink: #b13a22;
+  --teal: #17909d;    --teal-ink: #0d6b75;
+  --violet: #6b49b9;  --violet-ink: #5838a3;
+  --sun: #f0a53a;     --sun-ink: #94590a;
+  --rose: #d9508d;    --rose-ink: #ad2f68;
+  --green: #3c9057;   --green-ink: #2a6c3f;
+
+  --display: "Shrikhand", Georgia, serif;
+  --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "DM Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --emoji: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+
+  --radius: 18px;
+  color-scheme: dark;
+}
+
+html { height: 100%; box-sizing: border-box; background: var(--table); -webkit-text-size-adjust: 100%; }
+*, *::before, *::after { box-sizing: inherit; }
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background-color: var(--table);
+  background-image: radial-gradient(ellipse 80% 70% at 50% 40%, var(--table-glow), var(--table));
+  color: var(--paper);
+  font-family: var(--body);
+}
+button {
+  -webkit-appearance: none;
+  appearance: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.stage {
+  height: 100%;
+  padding-block: 16px;
+  padding-inline: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.slot {
+  position: relative;
+  flex-shrink: 0;
+  width: 100%;
+  max-width: 440px;
+  height: 50vh;
+  height: clamp(280px, 50vh, 460px);
+  max-height: calc(100% - 80px);
+  -webkit-perspective: 1600px;
+  perspective: 1600px;
+  container-type: size;
+}
+@supports (height: 1dvh) { .slot { height: clamp(280px, 50dvh, 460px); } }
+
+/* ---------- Dos de carte ---------- */
+.back-art {
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background-color: var(--back);
+  background-image:
+    repeating-linear-gradient(45deg, var(--saffron-15) 0 2px, transparent 2px 22px),
+    repeating-linear-gradient(-45deg, var(--saffron-15) 0 2px, transparent 2px 22px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 40px 20px;
+  color: var(--paper);
+}
+.back-art::before,
+.back-art::after { content: ""; position: absolute; pointer-events: none; }
+.back-art::before { top: 11px; right: 11px; bottom: 11px; left: 11px; border: 2px solid var(--saffron); border-radius: 12px; }
+.back-art::after { top: 17px; right: 17px; bottom: 17px; left: 17px; border: 1px solid var(--saffron-55); border-radius: 7px; }
+
+.medal {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  width: 170px;
+  height: 170px;
+  width: 52cqmin;
+  height: 52cqmin;
+  border-radius: 50%;
+  background: var(--back-deep);
+  border: 3px solid var(--saffron);
+  box-shadow: 0 0 0 8px var(--back), 0 0 0 10px var(--saffron);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.medal-mark {
+  font-family: var(--display);
+  color: var(--saffron);
+  font-size: 80px;
+  font-size: 25cqmin;
+  line-height: 1;
+  transform: rotate(-6deg);
+}
+.medal-name {
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: .2em;
+  font-size: .62rem;
+  font-size: clamp(.55rem, 2.6cqmin, .75rem);
+  line-height: 1.6;
+  text-align: center;
+  color: var(--paper);
+  margin-top: .2em;
+}
+.credit {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: 4px;
+  text-align: center;
+  font-family: var(--mono);
+  font-size: .62rem;
+  font-size: clamp(.56rem, 2.4cqmin, .7rem);
+  letter-spacing: .12em;
+  line-height: 1.5;
+  color: var(--saffron);
+  white-space: nowrap;
+}
+.credit span { background: var(--back); padding: 0 .8em; }
+
+/* ---------- Le paquet ---------- */
+.deck {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  font: inherit;
+  text-align: center;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  transition: transform .25s ease, box-shadow .25s ease;
+}
+.deck[data-layers="2"] { box-shadow: 3px 3px 0 var(--back-deep), 4px 4px 0 var(--edge), 7px 7px 0 var(--back-deep), 8px 8px 0 var(--edge), 14px 18px 34px var(--shadow); }
+.deck[data-layers="1"] { box-shadow: 3px 3px 0 var(--back-deep), 4px 4px 0 var(--edge), 12px 16px 30px var(--shadow); }
+.deck[data-layers="0"] { box-shadow: 10px 14px 28px var(--shadow); }
+@media (hover: hover) { .deck:hover { transform: translateY(-3px); } }
+.deck:focus-visible { outline: 3px solid var(--saffron); outline-offset: 5px; }
+.deck.shuffling { animation: shuffle .5s ease; }
+@keyframes shuffle {
+  0%, 100% { transform: none; }
+  25% { transform: translateX(-10px) rotate(-1.5deg); }
+  50% { transform: translateX(8px) rotate(1.2deg); }
+  75% { transform: translateX(-4px) rotate(-.5deg); }
+}
+.deck-count {
+  position: relative;
+  z-index: 1;
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: .72rem;
+  font-size: clamp(.62rem, 2.8cqmin, .8rem);
+  letter-spacing: .2em;
+  text-transform: uppercase;
+  color: var(--saffron);
+  font-variant-numeric: tabular-nums;
+}
+.deck-hint {
+  position: relative;
+  z-index: 1;
+  max-width: 26ch;
+  font-size: 1rem;
+  font-size: clamp(.92rem, 4cqmin, 1.1rem);
+  color: var(--paper);
+  text-wrap: balance;
+}
+
+/* ---------- Paquet vide ---------- */
+.empty {
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  border-radius: var(--radius);
+  border: 2px dashed var(--saffron-55);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 20px;
+  text-align: center;
+}
+.empty h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 1.8rem; font-size: clamp(1.5rem, 7cqmin, 2.2rem); color: var(--saffron); text-wrap: balance; }
+.empty p { margin: 0; max-width: 30ch; color: var(--edge); }
+
+/* ---------- Commandes sous la carte ---------- */
+.controls { width: 100%; max-width: 440px; min-height: 52px; margin-top: 18px; display: flex; align-items: center; justify-content: center; }
+.ctl { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px 16px; }
+.tool {
+  font-family: var(--mono);
+  font-size: .76rem;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--saffron);
+  background: var(--back-deep);
+  border: 1px solid var(--saffron-55);
+  border-radius: 999px;
+  padding: .65em 1.15em;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .2s, color .2s;
+}
+@media (hover: hover) { .tool:hover { background: var(--saffron); color: var(--back-deep); } }
+.tool:focus-visible { outline: 2px solid var(--paper); outline-offset: 3px; }
+.btn-gold {
+  font-family: var(--body);
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: var(--back-deep);
+  background: var(--saffron);
+  border: 0;
+  border-radius: 999px;
+  padding: .8em 1.6em;
+  cursor: pointer;
+  transition: background .2s;
+}
+@media (hover: hover) { .btn-gold:hover { background: var(--paper); } }
+.btn-gold:focus-visible { outline: 3px solid var(--paper); outline-offset: 3px; }
+.left {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: .8rem;
+  letter-spacing: .06em;
+  color: var(--edge);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- La carte tirée (retournement 3D compatible Safari) ---------- */
+.card {
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  z-index: 5;
+  -webkit-transform-style: preserve-3d;
+  transform-style: preserve-3d;
+  transform: translateX(0) rotate(0deg) rotateY(0deg);
+  transition: transform .7s cubic-bezier(.2, .75, .25, 1);
+}
+.card.flipped { transform: translateX(0) rotate(0deg) rotateY(180deg); }
+.card.leaving { transform: translateX(150%) rotate(12deg) rotateY(180deg); transition: transform .5s cubic-bezier(.55, 0, .8, .3); }
+.card.instant { transition: none; }
+
+.face {
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+/* Safari : chaque face décollée d'un pixel et descendants masqués aussi, sinon le dos transparaît */
+.face, .face * { -webkit-backface-visibility: hidden; backface-visibility: hidden; }
+.face.back-art { transform: rotateY(0deg) translateZ(1px); }
+.face-front {
+  transform: rotateY(180deg) translateZ(1px);
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 20px 50px var(--shadow);
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  padding: clamp(16px, 5.5cqmin, 26px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.ticket-head {
+  flex: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 2px dashed var(--rule);
+  font-family: var(--mono);
+  font-size: .68rem;
+  font-size: clamp(.6rem, 2.7cqmin, .74rem);
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+.ticket-num { font-weight: 500; color: var(--hue-ink); margin-right: 12px; }
+.ticket-deck { color: var(--ink-soft); }
+
+.route {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.stop {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  padding-bottom: 14px;
+}
+.stop:last-child { padding-bottom: 0; }
+.stop > div { flex: 1 1 auto; min-width: 0; padding-left: 12px; }
+.stop.via { align-items: center; }
+
+/* Trajet pointillé : un segment par étape, du marqueur au suivant */
+.stop::before,
+.stop::after { content: ""; position: absolute; left: 23px; border-left: 2px dashed var(--rail); }
+.stop.start::before { display: none; }
+.stop.start::after { top: 11px; bottom: 0; }
+.stop.via::before { top: 0; height: 50%; }
+.stop.via::after { top: 50%; bottom: 0; }
+.stop.end::before { top: 0; height: 11px; }
+.stop.end::after { display: none; }
+
+.marker { position: relative; z-index: 1; flex: none; width: 48px; display: flex; justify-content: center; }
+.dot { height: 22px; align-items: center; }
+.dot i { display: block; width: 16px; height: 16px; border-radius: 50%; border: 3px solid var(--ink); background: var(--paper); }
+.end .dot i { border-color: var(--hue-ink); background: var(--hue); box-shadow: inset 0 0 0 2px var(--paper); }
+.node {
+  height: 48px;
+  border-radius: 50%;
+  background: var(--hue);
+  box-shadow: 0 0 0 4px var(--paper);
+  align-items: center;
+  font-family: var(--emoji);
+  font-size: 24px;
+  line-height: 1;
+}
+.label {
+  display: block;
+  margin-bottom: .25em;
+  font-family: var(--mono);
+  font-weight: 500;
+  font-size: .66rem;
+  font-size: clamp(.58rem, 2.5cqmin, .7rem);
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.via .label { color: var(--hue-ink); }
+.place { margin: 0; font-weight: 700; font-size: 1.12rem; font-size: clamp(1rem, 4.8cqmin, 1.28rem); line-height: 1.25; text-wrap: balance; }
+.object { margin: 0; font-family: var(--display); font-weight: 400; font-size: 1.25rem; font-size: clamp(1.08rem, 5.4cqmin, 1.42rem); line-height: 1.15; color: var(--hue-ink); text-wrap: balance; }
+
+@media (prefers-reduced-motion: reduce) {
+  .card, .card.leaving, .deck { transition: none; }
+  .deck.shuffling { animation: none; }
+}
+</style>
+</head>
+<body>
+
+<main class="stage">
+  <div class="slot">
+    <button class="deck back-art" id="deck" type="button" data-layers="2" aria-label="Tirer une carte">
+      <span class="deck-count" id="deck-count">20 cartes</span>
+      <span class="medal" aria-hidden="true"><span class="medal-mark">&amp;</span><span class="medal-name">Passages<br>improbables</span></span>
+      <span class="deck-hint">Touchez le paquet pour tirer un passage</span>
+      <span class="credit"><span>© Christophe Gentil – 2026</span></span>
+    </button>
+
+    <section class="empty" id="empty" hidden>
+      <h2>Tous les passages ont été joués</h2>
+      <p>Remélangez le paquet pour retrouver les 20 cartes.</p>
+      <button class="btn-gold" id="reshuffle" type="button">Remélanger le paquet</button>
+    </section>
+
+    <div class="card" id="card" hidden>
+      <div class="face back-art" aria-hidden="true">
+        <span class="medal"><span class="medal-mark">&amp;</span><span class="medal-name">Passages<br>improbables</span></span>
+        <span class="credit"><span>© Christophe Gentil – 2026</span></span>
+      </div>
+      <article class="face face-front" aria-live="polite">
+        <header class="ticket-head">
+          <span class="ticket-num" id="f-num"></span>
+          <span class="ticket-deck">Passages improbables</span>
+        </header>
+        <ol class="route">
+          <li class="stop start">
+            <span class="marker dot" aria-hidden="true"><i></i></span>
+            <div><span class="label">Départ</span><p class="place" id="f-depart"></p></div>
+          </li>
+          <li class="stop via">
+            <span class="marker node" id="f-emoji" aria-hidden="true"></span>
+            <div><span class="label">Objet de passage</span><p class="object" id="f-objet"></p></div>
+          </li>
+          <li class="stop end">
+            <span class="marker dot" aria-hidden="true"><i></i></span>
+            <div><span class="label">Arrivée</span><p class="place" id="f-arrivee"></p></div>
+          </li>
+        </ol>
+      </article>
+    </div>
+  </div>
+
+  <div class="controls">
+    <div class="ctl" id="ctl-deck">
+      <button class="tool" id="shuffle" type="button">Remélanger</button>
+      <button class="tool" id="fullscreen" type="button">Plein écran</button>
+    </div>
+    <div class="ctl" id="ctl-card" hidden>
+      <button class="btn-gold" id="remove" type="button">Retirer la carte</button>
+      <p class="left" id="left"></p>
+    </div>
+  </div>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  var HUES = [
+    ["var(--teal)",   "var(--teal-ink)"],
+    ["var(--violet)", "var(--violet-ink)"],
+    ["var(--tomato)", "var(--tomato-ink)"],
+    ["var(--sun)",    "var(--sun-ink)"],
+    ["var(--rose)",   "var(--rose-ink)"],
+    ["var(--green)",  "var(--green-ink)"]
+  ];
+
+  var CARDS = [
+    { depart: "Une salle de classe", objet: "Une carte de géographie déroulante", emoji: "🗺️", arrivee: "La jungle amazonienne" },
+    { depart: "Une laverie automatique", objet: "Le hublot d'une machine à laver", emoji: "🌀", arrivee: "Une capsule spatiale en orbite" },
+    { depart: "Une cuisine familiale", objet: "La porte du congélateur", emoji: "🧊", arrivee: "La banquise, au milieu des manchots" },
+    { depart: "Un ascenseur en panne", objet: "Le bouton d'alarme", emoji: "🔔", arrivee: "Le poste de commande d'un sous-marin" },
+    { depart: "Une boulangerie à l'aube", objet: "Un sac de farine", emoji: "🌾", arrivee: "Un sommet de l'Himalaya en pleine tempête" },
+    { depart: "Un cabinet de dentiste", objet: "Le fauteuil inclinable", emoji: "💺", arrivee: "Le cockpit d'un avion de chasse" },
+    { depart: "Un grenier poussiéreux", objet: "Une vieille malle de voyage", emoji: "🧳", arrivee: "Le pont d'un paquebot, en 1920" },
+    { depart: "Une station de métro", objet: "Le plan du réseau", emoji: "🚇", arrivee: "Le labyrinthe du Minotaure" },
+    { depart: "Une salle de bain", objet: "Le bouchon de la baignoire", emoji: "🛁", arrivee: "Une épave au fond de l'océan" },
+    { depart: "Un supermarché un samedi", objet: "Un caddie", emoji: "🛒", arrivee: "Une course de chars dans la Rome antique" },
+    { depart: "Un repas de mariage", objet: "La pièce montée", emoji: "🎂", arrivee: "Le dernier étage d'un gratte-ciel en chantier" },
+    { depart: "Un salon de coiffure", objet: "Un sèche-cheveux", emoji: "💨", arrivee: "Le désert du Sahara, un jour de vent de sable" },
+    { depart: "Un musée de peinture", objet: "Le cadre doré d'un tableau", emoji: "🖼️", arrivee: "Un pique-nique au bord de la Seine, en 1880" },
+    { depart: "La salle d'attente d'une gare", objet: "L'horloge murale", emoji: "🕰️", arrivee: "La même gare, cent ans plus tôt" },
+    { depart: "Un camping sous la pluie", objet: "La fermeture éclair de la tente", emoji: "⛺", arrivee: "Le ventre d'une baleine" },
+    { depart: "Une fête foraine", objet: "Un ticket de manège", emoji: "🎟️", arrivee: "La surface de la Lune" },
+    { depart: "Un bureau en open space", objet: "La photocopieuse", emoji: "🖨️", arrivee: "Une usine de clones" },
+    { depart: "Une piscine municipale", objet: "Le grand plongeoir", emoji: "🏊", arrivee: "La porte ouverte d'un avion, à 4 000 mètres" },
+    { depart: "Une pizzeria", objet: "Le four à bois", emoji: "🔥", arrivee: "Le cratère d'un volcan en éruption" },
+    { depart: "Une chambre d'enfant", objet: "Une boule à neige", emoji: "❄️", arrivee: "Un village miniature sous la neige" }
+  ];
+
+  function $(id) { return document.getElementById(id); }
+  var deck = $("deck"), deckCount = $("deck-count"), emptyEl = $("empty"),
+      reshuffleBtn = $("reshuffle"), shuffleBtn = $("shuffle"), fsBtn = $("fullscreen"),
+      ctlDeck = $("ctl-deck"), ctlCard = $("ctl-card"), leftEl = $("left"),
+      card = $("card"), removeBtn = $("remove");
+  var f = { num: $("f-num"), emoji: $("f-emoji"), depart: $("f-depart"), objet: $("f-objet"), arrivee: $("f-arrivee") };
+
+  var reduce = window.matchMedia ? window.matchMedia("(prefers-reduced-motion: reduce)") : { matches: false };
+  function flipMs() { return reduce.matches ? 0 : 700; }
+  function leaveMs() { return reduce.matches ? 0 : 500; }
+
+  // Typographie française : espaces insécables avant ! ? : ; dans les guillemets et dans les milliers
+  function fr(s) { return s.replace(/ ([!?:;»])/g, " $1").replace(/« /g, "« ").replace(/(\d) (\d{3})/g, "$1 $2"); }
+  function plural(n) { return n + (n > 1 ? " cartes" : " carte"); }
+  function roman(n) {
+    var map = [[10, "X"], [9, "IX"], [5, "V"], [4, "IV"], [1, "I"]], out = "";
+    for (var k = 0; k < map.length; k++) { while (n >= map[k][0]) { out += map[k][1]; n -= map[k][0]; } }
+    return out;
+  }
+  function focusEl(el) { try { el.focus({ preventScroll: true }); } catch (e) {} }
+
+  var order = [], idx = 0, current = null, busy = false;
+
+  function shuffle() {
+    order = CARDS.map(function (_, i) { return i; });
+    for (var i = order.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = order[i]; order[i] = order[j]; order[j] = t;
+    }
+    idx = 0;
+  }
+  function remaining() { return order.length - idx; }
+
+  function render() {
+    var r = remaining();
+    var empty = r === 0;
+    deckCount.textContent = plural(r);
+    deck.setAttribute("data-layers", String(Math.min(2, Math.max(0, r - 1))));
+    deck.hidden = empty;
+    emptyEl.hidden = !(empty && current === null);
+    ctlDeck.hidden = empty || current !== null;
+    ctlCard.hidden = current === null;
+    leftEl.textContent = r === 0 ? "Dernière carte du paquet" : "Il reste " + plural(r);
+  }
+
+  function fill(i) {
+    var c = CARDS[i], h = HUES[i % HUES.length];
+    card.style.setProperty("--hue", h[0]);
+    card.style.setProperty("--hue-ink", h[1]);
+    f.num.textContent = "Passage " + roman(i + 1);
+    f.emoji.textContent = c.emoji;
+    f.depart.textContent = fr(c.depart);
+    f.objet.textContent = fr(c.objet);
+    f.arrivee.textContent = fr(c.arrivee);
+  }
+
+  function show(i, animate) {
+    fill(i);
+    card.classList.remove("flipped", "leaving");
+    card.hidden = false;
+    if (!animate) {
+      card.classList.add("instant", "flipped");
+      void card.offsetWidth;
+      card.classList.remove("instant");
+    } else {
+      void card.offsetWidth;
+      card.classList.add("flipped");
+    }
+  }
+
+  function draw() {
+    if (busy || current !== null || remaining() === 0) return;
+    busy = true;
+    current = order[idx++];
+    show(current, true);
+    render();
+    setTimeout(function () { busy = false; focusEl(removeBtn); }, flipMs());
+  }
+
+  function removeCard() {
+    if (busy || current === null) return;
+    busy = true;
+    card.classList.add("leaving");
+    setTimeout(function () {
+      card.hidden = true;
+      card.classList.remove("flipped", "leaving");
+      current = null;
+      busy = false;
+      render();
+      focusEl(remaining() ? deck : reshuffleBtn);
+    }, leaveMs());
+  }
+
+  function restart() {
+    if (busy || current !== null) return;
+    shuffle();
+    render();
+    deck.classList.remove("shuffling");
+    void deck.offsetWidth;
+    deck.classList.add("shuffling");
+    focusEl(deck);
+  }
+
+  deck.addEventListener("click", draw);
+  deck.addEventListener("animationend", function () { deck.classList.remove("shuffling"); });
+  removeBtn.addEventListener("click", removeCard);
+  shuffleBtn.addEventListener("click", restart);
+  reshuffleBtn.addEventListener("click", restart);
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") { removeCard(); return; }
+    if ((e.key === " " || e.key === "Enter") && current === null && document.activeElement === document.body) {
+      e.preventDefault();
+      draw();
+    }
+  });
+
+  // Plein écran : absent sur iPhone, le bouton est alors masqué
+  var rootEl = document.documentElement;
+  var canFs = !!(rootEl.requestFullscreen || rootEl.webkitRequestFullscreen);
+  if (!canFs) fsBtn.hidden = true;
+  fsBtn.addEventListener("click", function () {
+    try {
+      var isFs = document.fullscreenElement || document.webkitFullscreenElement;
+      var p = isFs
+        ? (document.exitFullscreen || document.webkitExitFullscreen).call(document)
+        : (rootEl.requestFullscreen || rootEl.webkitRequestFullscreen).call(rootEl);
+      if (p && p.catch) p.catch(function () { fsBtn.hidden = true; });
+    } catch (err) { fsBtn.hidden = true; }
+  });
+  function onFsChange() {
+    fsBtn.textContent = (document.fullscreenElement || document.webkitFullscreenElement) ? "Quitter le plein écran" : "Plein écran";
+  }
+  document.addEventListener("fullscreenchange", onFsChange);
+  document.addEventListener("webkitfullscreenchange", onFsChange);
+
+  // Le paquet est prêt immédiatement, sans attendre la visionneuse
+  shuffle();
+  render();
+
+  // Si la page est mise à jour pendant une partie, on retrouve le paquet en cours
+  function restore(data) {
+    if (!data || current !== null || idx > 0) return;
+    if (Object.prototype.toString.call(data.order) === "[object Array]" && data.order.length === CARDS.length && typeof data.idx === "number") {
+      order = data.order.slice();
+      idx = Math.min(Math.max(Math.floor(data.idx), 0), order.length);
+    }
+    if (typeof data.current === "number" && CARDS[data.current]) {
+      current = data.current;
+      show(current, false);
+    }
+    render();
+  }
+  try {
+    var hot = window.claude && window.claude.hot;
+    if (hot && typeof hot.snapshot === "function") {
+      hot.snapshot(function () { return { order: order, idx: idx, current: current }; });
+    }
+    if (hot && typeof hot.ready === "function") hot.ready(restore);
+    else if (hot && hot.data) restore(hot.data);
+  } catch (err) {}
+})();
+</script>
+</body>
+</html>
