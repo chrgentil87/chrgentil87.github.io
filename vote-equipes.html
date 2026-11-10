@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Répartissez vos 100 lou pelous entre les équipes.">
+<title>Vote des équipes</title>
+<style>[hidden]{display:none!important}</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Shrikhand&display=swap">
+<style>
+:root {
+  --bg: #fdf6ec;
+  --card: #ffffff;
+  --ink: #2a2118;
+  --ink-soft: #6b5d4f;
+  --rule: #eadfce;
+  --accent: #d9622b;
+  --accent-ink: #ffffff;
+  --gold: #e8a91c;
+  --ok: #2f8a4f;
+  --err: #c0392b;
+  --track: #f0e6d6;
+  --shadow: 0 6px 24px rgba(80, 50, 20, .10);
+  --display: "Shrikhand", Georgia, serif;
+  --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1b1612; --card: #262019; --ink: #f4ebe0; --ink-soft: #b9aa98;
+    --rule: #3a3128; --track: #3a3128; --accent: #ef7a43;
+    --shadow: 0 6px 24px rgba(0,0,0,.35);
+    color-scheme: dark;
+  }
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; min-height: 100vh; background: var(--bg); color: var(--ink);
+  font: 17px/1.5 var(--body);
+  padding: env(safe-area-inset-top, 0) 16px calc(env(safe-area-inset-bottom, 0) + 24px);
+}
+main { max-width: 640px; margin: 0 auto; }
+header { text-align: center; padding: 28px 0 8px; }
+h1 { font: 400 clamp(30px, 8vw, 44px)/1.1 var(--display); margin: 0 0 6px; color: var(--accent); }
+.lead { margin: 0; color: var(--ink-soft); }
+.card {
+  background: var(--card); border: 1px solid var(--rule); border-radius: 18px;
+  padding: 22px 20px; margin-top: 18px; box-shadow: var(--shadow);
+}
+h2 { font-size: 20px; margin: 0 0 14px; }
+label { display: block; font-weight: 700; margin: 12px 0 4px; }
+input[type=text], input[type=email] {
+  width: 100%; font: inherit; color: var(--ink); background: var(--bg);
+  border: 2px solid var(--rule); border-radius: 12px; padding: 12px 14px;
+}
+input[type=text]:focus, input[type=email]:focus { outline: none; border-color: var(--accent); }
+.hint { font-size: 14px; color: var(--ink-soft); margin: 6px 0 0; }
+button {
+  font: 700 17px var(--body); border: 0; border-radius: 999px; cursor: pointer;
+  padding: 14px 22px; background: var(--accent); color: var(--accent-ink);
+  touch-action: manipulation;
+}
+button:disabled { opacity: .45; cursor: not-allowed; }
+button.ghost { background: transparent; color: var(--ink-soft); border: 2px solid var(--rule); }
+.actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 20px; }
+.actions .grow { flex: 1 1 auto; }
+.msg { margin: 14px 0 0; padding: 10px 14px; border-radius: 12px; font-size: 15px; }
+.msg.err { background: rgba(192, 57, 43, .12); color: var(--err); }
+.msg.warn { background: rgba(232, 169, 28, .16); color: var(--ink); }
+
+/* Porte-monnaie */
+.wallet {
+  position: sticky; top: 0; z-index: 2; margin: 18px -16px 0; padding: 12px 16px;
+  background: var(--bg); border-bottom: 1px solid var(--rule);
+}
+.wallet-row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.wallet strong { font: 400 28px var(--display); color: var(--gold); }
+.wallet strong.done { color: var(--ok); }
+.wallet-bar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: var(--track); margin-top: 8px; }
+.wallet-bar span { display: block; height: 100%; transition: width .15s; }
+.coin {
+  display: inline-grid; place-items: center; width: 1.3em; height: 1.3em; border-radius: 50%;
+  background: var(--gold); color: #5a3a00; font: 700 .7em var(--body); vertical-align: .1em; margin-left: 4px;
+}
+
+/* Équipes */
+.team { padding: 14px 0; border-top: 1px solid var(--rule); }
+.team:first-of-type { border-top: 0; padding-top: 0; }
+.team-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.team-name { font-weight: 700; display: flex; align-items: center; gap: 8px; }
+.dot { width: 14px; height: 14px; border-radius: 50%; flex: none; }
+.team-val { font: 400 22px var(--display); min-width: 3ch; text-align: right; }
+.team-ctrl { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.step {
+  width: 40px; height: 40px; padding: 0; flex: none; border-radius: 50%;
+  background: var(--track); color: var(--ink); font-size: 22px; line-height: 1;
+}
+input[type=range] {
+  flex: 1; -webkit-appearance: none; appearance: none; height: 14px; border-radius: 7px;
+  background: linear-gradient(to right, var(--c) 0 var(--p, 0%), var(--track) var(--p, 0%) 100%);
+  outline: none;
+}
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 28px; height: 28px; border-radius: 50%;
+  background: var(--card); border: 4px solid var(--c); box-shadow: 0 2px 6px rgba(0,0,0,.25); cursor: pointer;
+}
+input[type=range]::-moz-range-thumb {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--card); border: 4px solid var(--c); box-shadow: 0 2px 6px rgba(0,0,0,.25); cursor: pointer;
+}
+input[type=range]:focus-visible::-webkit-slider-thumb { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* Récapitulatif */
+.recap { list-style: none; padding: 0; margin: 0; }
+.recap li { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed var(--rule); }
+.big-ok { font-size: 56px; text-align: center; margin: 0; }
+footer { text-align: center; color: var(--ink-soft); font-size: 13px; margin-top: 28px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Vote des équipes</h1>
+    <p class="lead">Vous avez <b>100 lou pelous</b>. Répartissez-les entre les équipes que vous voulez soutenir.</p>
+  </header>
+
+  <!-- Étape 1 : identité -->
+  <section id="step-id" class="card">
+    <h2>1. Qui êtes-vous ?</h2>
+    <form id="form-id" novalidate>
+      <label for="nom">Nom et prénom</label>
+      <input id="nom" type="text" autocomplete="name" required maxlength="80">
+      <label for="email">Adresse e-mail</label>
+      <input id="email" type="email" autocomplete="email" inputmode="email" required maxlength="120">
+      <p class="hint">Votre adresse sert uniquement à vérifier qu'on ne vote qu'une seule fois.</p>
+      <p id="id-msg" class="msg err" hidden></p>
+      <div class="actions"><button id="btn-id" class="grow" type="submit">Continuer</button></div>
+    </form>
+  </section>
+
+  <!-- Étape 2 : répartition -->
+  <section id="step-vote" hidden>
+    <div class="wallet" aria-live="polite">
+      <div class="wallet-row">
+        <span>Il vous reste</span>
+        <span><strong id="reste">100</strong><span class="coin" aria-hidden="true">ℓ</span></span>
+      </div>
+      <div id="wallet-bar" class="wallet-bar" aria-hidden="true"></div>
+    </div>
+    <div class="card">
+      <h2>2. Répartissez vos lou pelous</h2>
+      <div id="teams"></div>
+      <p id="vote-msg" class="msg err" hidden></p>
+      <div class="actions">
+        <button id="btn-back" class="ghost" type="button">Retour</button>
+        <button id="btn-reset" class="ghost" type="button">Tout remettre à 0</button>
+        <button id="btn-vote" class="grow" type="button" disabled>Valider mon vote</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Étape 3 : confirmation -->
+  <section id="step-confirm" class="card" hidden>
+    <h2>3. Vérifiez avant d'envoyer</h2>
+    <p id="confirm-who"></p>
+    <ul id="confirm-list" class="recap"></ul>
+    <p class="hint">Une fois envoyé, votre vote ne pourra plus être modifié.</p>
+    <p id="send-msg" class="msg err" hidden></p>
+    <div class="actions">
+      <button id="btn-edit" class="ghost" type="button">Modifier</button>
+      <button id="btn-send" class="grow" type="button">Envoyer mon vote</button>
+    </div>
+  </section>
+
+  <!-- Étape 4 : merci -->
+  <section id="step-done" class="card" hidden>
+    <p class="big-ok" aria-hidden="true">🎉</p>
+    <h2 style="text-align:center">Merci, votre vote est enregistré !</h2>
+    <ul id="done-list" class="recap"></ul>
+  </section>
+
+  <p id="demo-msg" class="msg warn" hidden>
+    Mode démonstration : aucune adresse d'enregistrement n'est configurée (<code>ENDPOINT</code> dans le fichier).
+    Les votes sont seulement gardés dans ce navigateur.
+  </p>
+  <footer>Un seul vote par adresse e-mail.</footer>
+</main>
+
+<script>
+/* ================== CONFIGURATION ==================
+   ENDPOINT : l'URL de l'application Web Google Apps Script (voir vote-equipes-apps-script.gs).
+   TEAMS    : la liste des équipes, avec une couleur chacune. */
+var ENDPOINT = "";
+var TOTAL = 100;
+var TEAMS = [
+  { name: "Équipe Rouge",  color: "#e0543a" },
+  { name: "Équipe Bleue",  color: "#2f7fd1" },
+  { name: "Équipe Verte",  color: "#3c9057" },
+  { name: "Équipe Jaune",  color: "#e8a91c" },
+  { name: "Équipe Violette", color: "#7b52c7" }
+];
+/* ==================================================== */
+
+var values = TEAMS.map(function () { return 0; });
+var voter = { nom: "", email: "" };
+var $ = function (id) { return document.getElementById(id); };
+var LS_KEY = "vote-equipes-deja-vote";
+
+function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+
+function show(id) {
+  ["step-id", "step-vote", "step-confirm", "step-done"].forEach(function (s) { $(s).hidden = s !== id; });
+  window.scrollTo(0, 0);
+}
+function showMsg(el, text) { el.textContent = text; el.hidden = !text; }
+function sum() { return values.reduce(function (a, b) { return a + b; }, 0); }
+function normEmail(e) { return String(e || "").trim().toLowerCase(); }
+
+/* ---------- Appels au serveur (Google Apps Script) ---------- */
+function api(method, params) {
+  if (!ENDPOINT) return demoApi(method, params);
+  var opts;
+  var url = ENDPOINT;
+  if (method === "GET") {
+    url += "?" + Object.keys(params).map(function (k) {
+      return encodeURIComponent(k) + "=" + encodeURIComponent(params[k]);
+    }).join("&");
+    opts = { method: "GET" };
+  } else {
+    // text/plain évite la requête préalable CORS, non gérée par Apps Script.
+    opts = { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(params) };
+  }
+  return fetch(url, opts).then(function (r) {
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return r.json();
+  });
+}
+function demoApi(method, params) {
+  var store = JSON.parse(lsGet("vote-equipes-demo") || "{}");
+  var email = normEmail(params.email);
+  if (method === "GET") return Promise.resolve({ ok: true, alreadyVoted: !!store[email] });
+  if (store[email]) return Promise.resolve({ ok: false, error: "already_voted" });
+  store[email] = params;
+  lsSet("vote-equipes-demo", JSON.stringify(store));
+  return Promise.resolve({ ok: true });
+}
+
+/* ---------- Étape 1 ---------- */
+$("form-id").addEventListener("submit", function (ev) {
+  ev.preventDefault();
+  var nom = $("nom").value.trim().replace(/\s+/g, " ");
+  var email = normEmail($("email").value);
+  var msg = $("id-msg");
+  if (nom.length < 2) { showMsg(msg, "Indiquez votre nom et prénom."); $("nom").focus(); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { showMsg(msg, "Cette adresse e-mail ne semble pas valide."); $("email").focus(); return; }
+  showMsg(msg, "");
+  var btn = $("btn-id");
+  btn.disabled = true; btn.textContent = "Vérification…";
+  api("GET", { action: "check", email: email }).then(function (res) {
+    if (res.alreadyVoted) {
+      showMsg(msg, "Un vote a déjà été enregistré avec cette adresse e-mail. On ne peut voter qu'une seule fois.");
+      return;
+    }
+    voter.nom = nom; voter.email = email;
+    show("step-vote");
+  }).catch(function () {
+    showMsg(msg, "Impossible de joindre le serveur. Vérifiez votre connexion et réessayez.");
+  }).then(function () {
+    btn.disabled = false; btn.textContent = "Continuer";
+  });
+});
+
+/* ---------- Étape 2 : jauges ---------- */
+function buildTeams() {
+  var box = $("teams");
+  TEAMS.forEach(function (t, i) {
+    var row = document.createElement("div");
+    row.className = "team";
+    row.style.setProperty("--c", t.color);
+    var id = "team-" + i;
+    row.innerHTML =
+      '<div class="team-head">' +
+        '<label class="team-name" for="' + id + '" style="margin:0"><span class="dot"></span><span></span></label>' +
+        '<span class="team-val" id="' + id + '-val">0</span>' +
+      '</div>' +
+      '<div class="team-ctrl">' +
+        '<button type="button" class="step" data-d="-1" aria-label="Retirer 1 lou pelou">−</button>' +
+        '<input type="range" id="' + id + '" min="0" max="' + TOTAL + '" step="1" value="0">' +
+        '<button type="button" class="step" data-d="1" aria-label="Ajouter 1 lou pelou">+</button>' +
+      '</div>';
+    row.querySelector(".dot").style.background = t.color;
+    row.querySelector(".team-name span:last-child").textContent = t.name;
+    var range = row.querySelector("input");
+    range.addEventListener("input", function () { setValue(i, parseInt(range.value, 10) || 0); });
+    row.querySelectorAll(".step").forEach(function (b) {
+      b.addEventListener("click", function () { setValue(i, values[i] + parseInt(b.dataset.d, 10)); });
+    });
+    box.appendChild(row);
+  });
+
+  var bar = $("wallet-bar");
+  TEAMS.forEach(function (t) {
+    var s = document.createElement("span");
+    s.style.background = t.color; s.style.width = "0%";
+    bar.appendChild(s);
+  });
+}
+
+function setValue(i, v) {
+  var others = sum() - values[i];
+  v = Math.max(0, Math.min(v, TOTAL - others)); // on ne peut pas dépenser plus que ce qui reste
+  values[i] = v;
+  render();
+}
+
+function render() {
+  var spent = sum(), rest = TOTAL - spent;
+  values.forEach(function (v, i) {
+    var r = $("team-" + i);
+    r.value = v;
+    r.style.setProperty("--p", (v / TOTAL * 100) + "%");
+    r.setAttribute("aria-valuetext", v + " lou pelous");
+    $("team-" + i + "-val").textContent = v;
+  });
+  var bars = $("wallet-bar").children;
+  values.forEach(function (v, i) { bars[i].style.width = (v / TOTAL * 100) + "%"; });
+  var r = $("reste");
+  r.textContent = rest;
+  r.classList.toggle("done", rest === 0);
+  $("btn-vote").disabled = rest !== 0;
+  $("btn-vote").textContent = rest === 0 ? "Valider mon vote" : "Il reste " + rest + " lou pelou" + (rest > 1 ? "s" : "") + " à placer";
+}
+
+$("btn-reset").addEventListener("click", function () { values = values.map(function () { return 0; }); render(); });
+$("btn-back").addEventListener("click", function () { show("step-id"); });
+
+function fillRecap(ul) {
+  ul.innerHTML = "";
+  TEAMS.forEach(function (t, i) {
+    var li = document.createElement("li");
+    var a = document.createElement("span"); a.textContent = t.name;
+    var b = document.createElement("b"); b.textContent = values[i] + " ℓ";
+    li.appendChild(a); li.appendChild(b); ul.appendChild(li);
+  });
+}
+
+$("btn-vote").addEventListener("click", function () {
+  if (sum() !== TOTAL) return;
+  $("confirm-who").textContent = voter.nom + " · " + voter.email;
+  fillRecap($("confirm-list"));
+  showMsg($("send-msg"), "");
+  show("step-confirm");
+});
+$("btn-edit").addEventListener("click", function () { show("step-vote"); });
+
+/* ---------- Étape 3 : envoi ---------- */
+$("btn-send").addEventListener("click", function () {
+  var btn = $("btn-send"), msg = $("send-msg");
+  var repartition = {};
+  TEAMS.forEach(function (t, i) { repartition[t.name] = values[i]; });
+  btn.disabled = true; btn.textContent = "Envoi…";
+  api("POST", { action: "vote", nom: voter.nom, email: voter.email, repartition: repartition })
+    .then(function (res) {
+      if (res.ok) {
+        lsSet(LS_KEY, voter.email);
+        fillRecap($("done-list"));
+        show("step-done");
+      } else if (res.error === "already_voted") {
+        showMsg(msg, "Un vote a déjà été enregistré avec cette adresse e-mail.");
+      } else {
+        showMsg(msg, "Le vote a été refusé (" + (res.error || "erreur inconnue") + ").");
+      }
+    })
+    .catch(function () { showMsg(msg, "Impossible de joindre le serveur. Votre vote n'est pas encore enregistré : réessayez."); })
+    .then(function () { btn.disabled = false; btn.textContent = "Envoyer mon vote"; });
+});
+
+/* ---------- Démarrage ---------- */
+buildTeams();
+render();
+if (!ENDPOINT) $("demo-msg").hidden = false;
+var prev = lsGet(LS_KEY);
+if (prev) {
+  $("email").value = prev;
+  showMsg($("id-msg"), "Un vote a déjà été envoyé depuis cet appareil (" + prev + ").");
+}
+</script>
+</body>
+</html>
