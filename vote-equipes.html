@@ -235,9 +235,24 @@ function api(method, params) {
     opts = { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(params) };
   }
   return fetch(url, opts).then(function (r) {
-    if (!r.ok) throw new Error("HTTP " + r.status);
-    return r.json();
+    if (!r.ok) { var e = new Error("HTTP " + r.status); e.kind = "http"; throw e; }
+    return r.text().then(function (t) {
+      try { return JSON.parse(t); }
+      catch (x) { var e = new Error("Réponse non JSON : " + t.slice(0, 120)); e.kind = "format"; throw e; }
+    });
   });
+}
+
+/* Message d'erreur explicite, pour aider à trouver la cause. Le détail technique est aussi dans la console (F12). */
+function explainError(err) {
+  console.error("Vote des équipes :", err);
+  if (!navigator.onLine) return "Vous n'êtes pas connecté à Internet. Vérifiez votre connexion et réessayez.";
+  if (err && err.kind === "format")
+    return "Le serveur Google a répondu, mais pas avec un vote : le script n'est pas autorisé ou contient une erreur. " +
+           "Ouvrez l'adresse ENDPOINT dans un navigateur pour voir le message.";
+  if (err && err.kind === "http") return "Le serveur Google a répondu par une erreur (" + err.message + ").";
+  return "Impossible de lire la réponse du serveur Google. Vérifiez que le déploiement est en accès « Tout le monde » " +
+         "et que l'adresse ENDPOINT est bien celle qui finit par /exec.";
 }
 function demoApi(method, params) {
   var store = JSON.parse(lsGet("vote-equipes-demo") || "{}");
@@ -267,8 +282,8 @@ $("form-id").addEventListener("submit", function (ev) {
     }
     voter.nom = nom; voter.email = email;
     show("step-vote");
-  }).catch(function () {
-    showMsg(msg, "Impossible de joindre le serveur. Vérifiez votre connexion et réessayez.");
+  }).catch(function (err) {
+    showMsg(msg, explainError(err));
   }).then(function () {
     btn.disabled = false; btn.textContent = "Continuer";
   });
@@ -375,14 +390,20 @@ $("btn-send").addEventListener("click", function () {
         showMsg(msg, "Le vote a été refusé (" + (res.error || "erreur inconnue") + ").");
       }
     })
-    .catch(function () { showMsg(msg, "Impossible de joindre le serveur. Votre vote n'est pas encore enregistré : réessayez."); })
+    .catch(function (err) { showMsg(msg, "Votre vote n'est pas encore enregistré. " + explainError(err)); })
     .then(function () { btn.disabled = false; btn.textContent = "Envoyer mon vote"; });
 });
 
 /* ---------- Démarrage ---------- */
 buildTeams();
 render();
+ENDPOINT = ENDPOINT.trim();
 if (!ENDPOINT) $("demo-msg").hidden = false;
+else if (!/^https:\/\/script\.google\.com\/macros\/s\/[^\/]+\/exec$/.test(ENDPOINT)) {
+  $("demo-msg").textContent = "Attention : l'adresse ENDPOINT ne ressemble pas à une URL d'application Web Google " +
+    "(https://script.google.com/macros/s/…/exec). Recopiez l'URL donnée au moment du déploiement.";
+  $("demo-msg").hidden = false;
+}
 var prev = lsGet(LS_KEY);
 if (prev) {
   $("email").value = prev;
