@@ -1,0 +1,602 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="La'place : belote à quatre joueurs sur un seul appareil, chacun son tour, sans compter les points.">
+<title>La'place</title>
+<style>[hidden]{display:none!important}</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Shrikhand&display=swap">
+<style>
+/* La'place : tapis vert, cartes blanches, dos bordeaux. Jeu en passe-passe : l'appareil circule,
+   le joueur dont c'est le tour est toujours en bas de l'écran. */
+:root {
+  --felt: #0f4a2f;
+  --felt-glow: #1b6b45;
+  --felt-deep: #08301e;
+  --gold: #f2c14e;
+  --paper: #fdfcf8;
+  --ink: #1d1d1f;
+  --red: #c62828;
+  --back: #8e1f2f;
+  --back-deep: #5c1220;
+  --muted: rgba(255,255,255,.72);
+  --panel: rgba(0,0,0,.28);
+  --display: "Shrikhand", Georgia, serif;
+  --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --cw: 58px;
+  color-scheme: dark;
+}
+@media (min-width: 420px) { :root { --cw: 64px; } }
+@media (min-width: 700px) { :root { --cw: 78px; } }
+@media (max-height: 620px) { :root { --cw: 50px; } }
+
+html { height: 100%; box-sizing: border-box; background: var(--felt-deep); -webkit-text-size-adjust: 100%; }
+*, *::before, *::after { box-sizing: inherit; }
+body {
+  height: 100%; margin: 0; overflow: hidden;
+  background-color: var(--felt);
+  background-image: radial-gradient(ellipse 80% 65% at 50% 45%, var(--felt-glow), var(--felt) 60%, var(--felt-deep));
+  color: #fff; font-family: var(--body);
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+button {
+  -webkit-appearance: none; appearance: none; font: inherit; cursor: pointer;
+  touch-action: manipulation; -webkit-tap-highlight-color: transparent;
+}
+.btn {
+  border: 0; border-radius: 999px; padding: 12px 20px; font-weight: 700; font-size: 1rem;
+  background: var(--gold); color: #2b1d00; box-shadow: 0 3px 0 rgba(0,0,0,.3);
+}
+.btn:active { transform: translateY(2px); box-shadow: 0 1px 0 rgba(0,0,0,.3); }
+.btn.ghost { background: rgba(255,255,255,.14); color: #fff; box-shadow: none; }
+.btn.suit { background: var(--paper); color: var(--ink); min-width: 64px; font-size: 1.25rem; }
+.btn.suit.red { color: var(--red); }
+
+/* ---------- Écran d'accueil ---------- */
+.setup {
+  height: 100%; overflow-y: auto; padding: 24px 16px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+}
+.logo { font-family: var(--display); font-weight: 400; font-size: 3.4rem; line-height: 1; margin: 0; color: var(--gold); text-shadow: 0 4px 0 rgba(0,0,0,.3); }
+.tagline { margin: -6px 0 4px; color: var(--muted); text-align: center; }
+.teams { width: 100%; max-width: 420px; display: grid; gap: 12px; }
+.team { background: var(--panel); border-radius: 16px; padding: 12px 14px; }
+.team h2 { margin: 0 0 8px; font-size: .85rem; text-transform: uppercase; letter-spacing: .08em; color: var(--gold); }
+.team label { display: flex; align-items: center; gap: 10px; margin-top: 8px; font-size: .9rem; color: var(--muted); }
+.team input {
+  flex: 1; min-width: 0; font: inherit; font-size: 1rem; padding: 10px 12px; border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.2); background: rgba(255,255,255,.08); color: #fff;
+}
+.opt { display: flex; gap: 10px; align-items: flex-start; max-width: 420px; width: 100%; color: var(--muted); font-size: .92rem; }
+.opt input { margin-top: 3px; width: 18px; height: 18px; accent-color: var(--gold); }
+.rules { max-width: 420px; width: 100%; color: var(--muted); font-size: .88rem; }
+.rules summary { cursor: pointer; color: #fff; font-weight: 700; }
+.rules ul { padding-left: 18px; margin: 8px 0 0; }
+.rules li { margin-bottom: 4px; }
+
+/* ---------- Partie ---------- */
+.game { height: 100%; display: flex; flex-direction: column; }
+.bar {
+  display: flex; align-items: center; gap: 10px; padding: 8px 12px;
+  background: rgba(0,0,0,.25); font-size: .9rem; flex-shrink: 0;
+}
+.bar .brand { font-family: var(--display); color: var(--gold); font-size: 1.2rem; }
+.bar .info { flex: 1; min-width: 0; text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.trump-chip { display: inline-block; background: var(--paper); color: var(--ink); border-radius: 8px; padding: 1px 8px; font-weight: 700; margin-left: 4px; }
+.trump-chip.red { color: var(--red); }
+.icon-btn { border: 0; background: rgba(255,255,255,.14); color: #fff; border-radius: 10px; padding: 6px 10px; font-weight: 700; }
+
+.table { position: relative; flex: 1; min-height: 0; }
+.seat {
+  position: absolute; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  font-size: .85rem; max-width: 30%;
+}
+.seat .name {
+  background: var(--panel); padding: 3px 10px; border-radius: 999px; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+}
+.seat.partner .name { border: 1px solid var(--gold); }
+.seat .tags { display: flex; gap: 4px; }
+.tag { font-size: .7rem; font-weight: 700; padding: 1px 6px; border-radius: 6px; background: rgba(255,255,255,.2); }
+.tag.taker { background: var(--gold); color: #2b1d00; }
+.seat-top { top: 8px; left: 50%; -webkit-transform: translateX(-50%); transform: translateX(-50%); }
+.seat-left { left: 8px; top: 42%; -webkit-transform: translateY(-50%); transform: translateY(-50%); }
+.seat-right { right: 8px; top: 42%; -webkit-transform: translateY(-50%); transform: translateY(-50%); }
+.mini-backs { display: flex; }
+.mini-backs i {
+  display: block; width: 12px; height: 18px; border-radius: 2px; margin-left: -5px;
+  background: var(--back); border: 1px solid rgba(255,255,255,.6);
+}
+.mini-backs i:first-child { margin-left: 0; }
+
+.center {
+  position: absolute; left: 50%; top: 46%;
+  width: calc(var(--cw) * 3.4); height: calc(var(--cw) * 3.6);
+  margin-left: calc(var(--cw) * -1.7); margin-top: calc(var(--cw) * -1.8);
+}
+.slot { position: absolute; display: flex; flex-direction: column; align-items: center; }
+.slot .who { font-size: .7rem; color: var(--muted); margin-top: 2px; max-width: calc(var(--cw) * 1.3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.slot-bottom { left: 50%; bottom: 0; margin-left: calc(var(--cw) * -.5); }
+.slot-top { left: 50%; top: 0; margin-left: calc(var(--cw) * -.5); }
+.slot-left { left: 0; top: 50%; margin-top: calc(var(--cw) * -.75); }
+.slot-right { right: 0; top: 50%; margin-top: calc(var(--cw) * -.75); }
+.slot.win .card { box-shadow: 0 0 0 3px var(--gold), 0 4px 10px rgba(0,0,0,.4); }
+.turned { position: absolute; left: 50%; top: 50%; text-align: center; -webkit-transform: translate(-50%,-50%); transform: translate(-50%,-50%); }
+.turned p { margin: 6px 0 0; font-size: .8rem; color: var(--muted); }
+
+/* ---------- Cartes ---------- */
+.card {
+  position: relative; width: var(--cw); height: calc(var(--cw) * 1.45);
+  background: var(--paper); color: var(--ink); border-radius: calc(var(--cw) * .1);
+  box-shadow: 0 2px 6px rgba(0,0,0,.35); border: 1px solid #d8d4c8; flex-shrink: 0;
+  font-weight: 700; line-height: 1; user-select: none; -webkit-user-select: none;
+}
+.card.red { color: var(--red); }
+.card .c { position: absolute; top: 5%; left: 8%; text-align: center; font-size: calc(var(--cw) * .27); }
+.card .c span { display: block; font-size: calc(var(--cw) * .25); margin-top: 1px; }
+.card .c.br { top: auto; left: auto; bottom: 5%; right: 8%; -webkit-transform: rotate(180deg); transform: rotate(180deg); }
+.card .big { position: absolute; left: 0; right: 0; top: 50%; margin-top: calc(var(--cw) * -.28); text-align: center; font-size: calc(var(--cw) * .56); }
+.card.back {
+  background-color: var(--back);
+  background-image: repeating-linear-gradient(45deg, rgba(255,255,255,.12) 0 4px, transparent 4px 9px),
+                    repeating-linear-gradient(-45deg, rgba(255,255,255,.12) 0 4px, transparent 4px 9px);
+  border: 3px solid var(--paper);
+}
+
+.dock { flex-shrink: 0; padding: 6px 8px 12px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.msg { min-height: 1.4em; text-align: center; font-size: .98rem; padding: 0 8px; }
+.msg b { color: var(--gold); }
+.actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.hand { display: flex; justify-content: center; padding-top: 14px; max-width: 100%; }
+.hand .card { margin-left: calc(var(--cw) * -.28); -webkit-transition: transform .12s; transition: transform .12s; }
+.hand .card:first-child { margin-left: 0; }
+.hand.play .card.ok { cursor: pointer; -webkit-transform: translateY(-12px); transform: translateY(-12px); box-shadow: 0 0 0 2px var(--gold), 0 4px 10px rgba(0,0,0,.4); }
+.hand.play .card.ok:active { -webkit-transform: translateY(-18px); transform: translateY(-18px); }
+.hand.play .card.no { -webkit-filter: brightness(.6); filter: brightness(.6); }
+
+/* ---------- Fenêtres ---------- */
+.modal {
+  position: fixed; top: 0; right: 0; bottom: 0; left: 0; z-index: 20;
+  background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; padding: 16px;
+}
+.sheet {
+  background: var(--felt-deep); border: 1px solid rgba(255,255,255,.15); border-radius: 20px;
+  padding: 20px; width: 100%; max-width: 380px; text-align: center;
+  display: flex; flex-direction: column; gap: 12px; box-shadow: 0 10px 40px rgba(0,0,0,.5);
+}
+.sheet h2 { margin: 0; font-family: var(--display); font-weight: 400; color: var(--gold); font-size: 1.6rem; }
+.sheet p { margin: 0; color: var(--muted); }
+.sheet .row { display: flex; justify-content: center; gap: 6px; flex-wrap: wrap; }
+.toast {
+  position: fixed; left: 50%; top: 22%; z-index: 30; -webkit-transform: translateX(-50%); transform: translateX(-50%);
+  background: var(--gold); color: #2b1d00; font-family: var(--display); font-size: 1.6rem;
+  padding: 10px 22px; border-radius: 16px; box-shadow: 0 6px 20px rgba(0,0,0,.4); pointer-events: none;
+  white-space: nowrap;
+}
+</style>
+</head>
+<body>
+
+<!-- Accueil -->
+<section class="setup" id="setup">
+  <h1 class="logo">La'place</h1>
+  <p class="tagline">Belote à quatre, sur un seul appareil.<br>On joue chacun son tour, sans compter les points.</p>
+  <div class="teams">
+    <div class="team">
+      <h2>Équipe 1</h2>
+      <label>Joueur 1 <input id="n0" maxlength="14" autocomplete="off"></label>
+      <label>Joueur 3 <input id="n2" maxlength="14" autocomplete="off"></label>
+    </div>
+    <div class="team">
+      <h2>Équipe 2</h2>
+      <label>Joueur 2 <input id="n1" maxlength="14" autocomplete="off"></label>
+      <label>Joueur 4 <input id="n3" maxlength="14" autocomplete="off"></label>
+    </div>
+  </div>
+  <label class="opt"><input type="checkbox" id="hideOpt" checked> Cacher le jeu entre deux tours (chacun touche l'écran pour voir ses cartes quand c'est à lui).</label>
+  <button class="btn" id="startBtn">Distribuer</button>
+  <details class="rules">
+    <summary>Rappel des règles</summary>
+    <ul>
+      <li>On tourne vers la droite. Les partenaires sont face à face (1 et 3, 2 et 4).</li>
+      <li>5 cartes chacun, une carte retournée. Premier tour : on prend à la couleur retournée ou on passe. Second tour : on choisit une autre couleur ou on passe. Si tout le monde passe deux fois, on redistribue.</li>
+      <li>Il faut fournir la couleur demandée. Sans elle, on coupe, sauf si son partenaire est maître du pli. Si un atout est déjà posé, il faut monter ; si on ne peut pas, on joue quand même atout.</li>
+      <li>À l'atout : Valet, 9, As, 10, Roi, Dame, 8, 7. Ailleurs : As, 10, Roi, Dame, Valet, 9, 8, 7.</li>
+      <li>Le jeu n'accepte que les cartes autorisées : elles sont surlevées dans votre main.</li>
+    </ul>
+  </details>
+</section>
+
+<!-- Partie -->
+<section class="game" id="game" hidden>
+  <header class="bar">
+    <span class="brand">La'place</span>
+    <span class="info" id="info"></span>
+    <button class="icon-btn" id="menuBtn" aria-label="Menu">☰</button>
+  </header>
+  <div class="table" id="table"></div>
+  <div class="dock">
+    <div class="msg" id="msg"></div>
+    <div class="actions" id="actions"></div>
+    <div class="hand" id="hand"></div>
+  </div>
+</section>
+
+<div class="modal" id="modal" hidden><div class="sheet" id="sheet"></div></div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var SUITS = ['S', 'H', 'C', 'D'];
+  var SYM = { S: '♠', H: '♥', D: '♦', C: '♣' };
+  var SNAME = { S: 'pique', H: 'cœur', D: 'carreau', C: 'trèfle' };
+  var RANKS = ['7', '8', '9', '10', 'V', 'D', 'R', 'A'];
+  var ORD_N = { '7': 0, '8': 1, '9': 2, 'V': 3, 'D': 4, 'R': 5, '10': 6, 'A': 7 };
+  var ORD_T = { '7': 0, '8': 1, 'D': 2, 'R': 3, '10': 4, 'A': 5, '9': 6, 'V': 7 };
+  var STORE = 'laplace-noms';
+
+  var g = null; // état de la partie
+  var $ = function (id) { return document.getElementById(id); };
+
+  function isRed(s) { return s === 'H' || s === 'D'; }
+  function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function nm(p) { return esc(g.names[p]); }
+  function suitHtml(s) { return '<span style="color:' + (isRed(s) ? '#ff6b6b' : 'inherit') + '">' + SYM[s] + '</span>'; }
+
+  // ---------- Noms mémorisés ----------
+  (function loadNames() {
+    var saved = null;
+    try { saved = JSON.parse(localStorage.getItem(STORE)); } catch (e) {}
+    for (var i = 0; i < 4; i++) {
+      $('n' + i).value = (saved && saved[i]) || ('Joueur ' + (i + 1));
+    }
+  })();
+
+  // ---------- Cartes ----------
+  function ord(c, trump) { return c.s === trump ? ORD_T[c.r] : ORD_N[c.r]; }
+  function beats(a, b, trump) { // a bat-elle b, la carte maîtresse actuelle ?
+    if (a.s === b.s) return ord(a, trump) > ord(b, trump);
+    return a.s === trump;
+  }
+  function winnerOf(trick, trump) {
+    var w = 0;
+    for (var i = 1; i < trick.length; i++) if (beats(trick[i].c, trick[w].c, trump)) w = i;
+    return w;
+  }
+  function newDeck() {
+    var d = [];
+    SUITS.forEach(function (s) { RANKS.forEach(function (r) { d.push({ s: s, r: r }); }); });
+    for (var i = d.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = d[i]; d[i] = d[j]; d[j] = t;
+    }
+    return d;
+  }
+  function sortHand(h, trump) {
+    var order = trump ? [trump].concat(SUITS.filter(function (s) { return s !== trump; })) : SUITS.slice();
+    // alterner rouge / noir autant que possible
+    if (trump) {
+      var rest = order.slice(1), alt = [];
+      var want = !isRed(trump);
+      while (rest.length) {
+        var k = -1;
+        for (var i = 0; i < rest.length; i++) if (isRed(rest[i]) === want) { k = i; break; }
+        if (k < 0) k = 0;
+        alt.push(rest.splice(k, 1)[0]);
+        want = !want;
+      }
+      order = [trump].concat(alt);
+    }
+    h.sort(function (a, b) {
+      if (a.s !== b.s) return order.indexOf(a.s) - order.indexOf(b.s);
+      return ord(b, trump) - ord(a, trump);
+    });
+  }
+  function cardHtml(c, extra) {
+    var r = c.r, s = SYM[c.s];
+    return '<div class="card' + (isRed(c.s) ? ' red' : '') + (extra || '') + '">' +
+      '<div class="c">' + r + '<span>' + s + '</span></div>' +
+      '<div class="big">' + s + '</div>' +
+      '<div class="c br">' + r + '<span>' + s + '</span></div></div>';
+  }
+  function backHtml() { return '<div class="card back"></div>'; }
+
+  // ---------- Règles du jeu de la carte ----------
+  function legal(p) {
+    var hand = g.hands[p], trick = g.trick, T = g.trump;
+    if (!trick.length) return hand.slice();
+    var led = trick[0].c.s;
+    var w = trick[winnerOf(trick, T)];
+    var same = hand.filter(function (c) { return c.s === led; });
+    var trumps = hand.filter(function (c) { return c.s === T; });
+    var higher = trumps.filter(function (c) { return w.c.s !== T || ord(c, T) > ord(w.c, T); });
+
+    if (led === T) {
+      if (!trumps.length) return hand.slice();
+      return higher.length ? higher : trumps;
+    }
+    if (same.length) return same;
+    if (w.p === (p + 2) % 4) return hand.slice();   // partenaire maître : on joue ce qu'on veut
+    if (!trumps.length) return hand.slice();
+    return higher.length ? higher : trumps;          // couper, monter si possible
+  }
+
+  // ---------- Déroulement ----------
+  function startGame() {
+    var names = [];
+    for (var i = 0; i < 4; i++) {
+      var v = $('n' + i).value.trim();
+      names.push(v || ('Joueur ' + (i + 1)));
+    }
+    try { localStorage.setItem(STORE, JSON.stringify(names)); } catch (e) {}
+    g = { names: names, hide: $('hideOpt').checked, dealer: Math.floor(Math.random() * 4) };
+    $('setup').hidden = true;
+    $('game').hidden = false;
+    deal();
+  }
+
+  function deal() {
+    var d = newDeck();
+    g.deck = d;
+    g.hands = [[], [], [], []];
+    g.trump = null; g.taker = null;
+    g.trick = []; g.lastTrick = null; g.trickNo = 0;
+    g.bidRound = 1; g.bidCount = 0; g.bidLog = [];
+    g.belote = null;
+    var first = (g.dealer + 1) % 4, i, k;
+    [3, 2].forEach(function (n) {
+      for (i = 0; i < 4; i++) for (k = 0; k < n; k++) g.hands[(first + i) % 4].push(d.pop());
+    });
+    g.turned = d.pop();
+    g.hands.forEach(function (h) { sortHand(h, null); });
+    g.phase = 'bid';
+    g.current = first;
+    g.revealed = !g.hide;
+    render();
+  }
+
+  function bid(suit) { // suit = null pour passer
+    var p = g.current;
+    if (suit) {
+      g.trump = suit;
+      g.taker = p;
+      g.bidLog.push(nm(p) + ' prend à ' + suitHtml(suit));
+      finishDeal();
+      return;
+    }
+    g.bidLog.push(nm(p) + ' passe');
+    g.bidCount++;
+    if (g.bidCount === 4) {
+      if (g.bidRound === 1) { g.bidRound = 2; g.bidCount = 0; }
+      else {
+        showModal('<h2>Personne ne prend</h2><p>Les cartes sont rebattues, ' + nm((g.dealer + 1) % 4) + ' distribue.</p>' +
+          '<button class="btn" data-act="redeal">Redistribuer</button>');
+        return;
+      }
+    }
+    g.current = (p + 1) % 4;
+    g.revealed = !g.hide;
+    render();
+  }
+
+  function finishDeal() {
+    var d = g.deck, first = (g.dealer + 1) % 4;
+    g.hands[g.taker].push(g.turned);
+    for (var i = 0; i < 4; i++) {
+      var p = (first + i) % 4, n = p === g.taker ? 2 : 3;
+      for (var k = 0; k < n; k++) g.hands[p].push(d.pop());
+    }
+    g.hands.forEach(function (h) { sortHand(h, g.trump); });
+    // Belote : le Roi et la Dame d'atout dans la même main
+    for (var q = 0; q < 4; q++) {
+      var hasK = false, hasQ = false;
+      g.hands[q].forEach(function (c) { if (c.s === g.trump && c.r === 'R') hasK = true; if (c.s === g.trump && c.r === 'D') hasQ = true; });
+      if (hasK && hasQ) g.belote = { p: q, said: 0 };
+    }
+    g.phase = 'play';
+    g.current = first;
+    g.revealed = !g.hide;
+    toast(g.names[g.taker] + ' prend à ' + SYM[g.trump]);
+    render();
+  }
+
+  function play(idx) {
+    var p = g.current, hand = g.hands[p], c = hand[idx];
+    var ok = legal(p).indexOf(c) >= 0;
+    if (!ok) return;
+    hand.splice(idx, 1);
+    g.trick.push({ p: p, c: c });
+    if (g.belote && g.belote.p === p && c.s === g.trump && (c.r === 'R' || c.r === 'D')) {
+      g.belote.said++;
+      toast(g.belote.said === 1 ? 'Belote !' : 'Rebelote !');
+    }
+    if (g.trick.length === 4) {
+      g.phase = 'trick';
+      g.trickWinner = g.trick[winnerOf(g.trick, g.trump)].p;
+    } else {
+      g.current = (p + 1) % 4;
+    }
+    g.revealed = !g.hide;
+    render();
+  }
+
+  function collect() {
+    g.lastTrick = { cards: g.trick, winner: g.trickWinner };
+    g.trick = [];
+    g.trickNo++;
+    if (g.trickNo === 8) {
+      g.phase = 'done';
+      render();
+      var next = (g.dealer + 1) % 4;
+      showModal('<h2>Donne terminée</h2><p>' + nm(g.trickWinner) + ' a fait le dernier pli.</p>' +
+        '<p>Prochaine donne : ' + nm(next) + ' distribue.</p>' +
+        '<button class="btn" data-act="redeal">Donne suivante</button>' +
+        '<button class="btn ghost" data-act="last">Voir le dernier pli</button>');
+      return;
+    }
+    g.phase = 'play';
+    g.current = g.trickWinner;
+    g.revealed = !g.hide;
+    render();
+  }
+
+  // ---------- Affichage ----------
+  function rel(p) { return ['bottom', 'right', 'top', 'left'][(p - g.current + 4) % 4]; }
+
+  function render() {
+    var v = g.current, i;
+    // barre du haut
+    var info = 'Donneur : ' + nm(g.dealer);
+    if (g.trump) {
+      info = 'Atout <span class="trump-chip' + (isRed(g.trump) ? ' red' : '') + '">' + SYM[g.trump] + '</span> · pris par ' + nm(g.taker);
+    }
+    $('info').innerHTML = info;
+
+    // sièges
+    var html = '';
+    for (i = 1; i < 4; i++) {
+      var p = (v + i) % 4, pos = rel(p);
+      var tags = '';
+      if (p === g.dealer) tags += '<span class="tag">Donne</span>';
+      if (p === g.taker) tags += '<span class="tag taker">Preneur</span>';
+      var backs = '';
+      for (var k = 0; k < g.hands[p].length; k++) backs += '<i></i>';
+      html += '<div class="seat seat-' + pos + (i === 2 ? ' partner' : '') + '">' +
+        '<span class="name">' + nm(p) + (i === 2 ? ' 🤝' : '') + '</span>' +
+        '<div class="mini-backs">' + backs + '</div>' +
+        (tags ? '<div class="tags">' + tags + '</div>' : '') + '</div>';
+    }
+    // centre
+    html += '<div class="center">';
+    if (g.phase === 'bid') {
+      html += '<div class="turned">' + cardHtml(g.turned) + '<p>Carte retournée</p></div>';
+    } else {
+      var wi = g.phase === 'trick' ? winnerOf(g.trick, g.trump) : -1;
+      g.trick.forEach(function (t, j) {
+        html += '<div class="slot slot-' + rel(t.p) + (j === wi ? ' win' : '') + '">' + cardHtml(t.c) +
+          '<span class="who">' + nm(t.p) + '</span></div>';
+      });
+    }
+    html += '</div>';
+    $('table').innerHTML = html;
+
+    // message, actions, main
+    var msg = '', act = '', handCls = 'hand', handHtml = '';
+    var myTags = (v === g.dealer ? ' · donneur' : '') + (v === g.taker ? ' · preneur' : '');
+    var hideHand = !g.revealed || g.phase === 'trick' || g.phase === 'done';
+
+    if (g.phase === 'trick') {
+      msg = '<b>' + nm(g.trickWinner) + '</b> remporte le pli.';
+      act = '<button class="btn" data-act="collect">' + (g.trickNo === 7 ? 'Ramasser le dernier pli' : 'Ramasser le pli') + '</button>';
+    } else if (g.phase === 'done') {
+      msg = 'Donne terminée.';
+      act = '<button class="btn" data-act="redeal">Donne suivante</button>';
+    } else if (!g.revealed) {
+      msg = 'Au tour de <b>' + nm(v) + '</b>' + myTags + '. Les autres, on ne regarde pas !';
+      act = '<button class="btn" data-act="reveal">' + nm(v) + ', voir mon jeu</button>';
+    } else if (g.phase === 'bid') {
+      var last = g.bidLog.length ? g.bidLog[g.bidLog.length - 1] + '. ' : '';
+      if (g.bidRound === 1) {
+        msg = last + '<b>' + nm(v) + '</b>, prends-tu à ' + suitHtml(g.turned.s) + ' ?';
+        act = '<button class="btn suit' + (isRed(g.turned.s) ? ' red' : '') + '" data-bid="' + g.turned.s + '">Je prends ' + SYM[g.turned.s] + '</button>' +
+          '<button class="btn ghost" data-bid="">Je passe</button>';
+      } else {
+        msg = last + 'Second tour. <b>' + nm(v) + '</b>, choisis une couleur ou passe.';
+        SUITS.forEach(function (s) {
+          if (s !== g.turned.s) act += '<button class="btn suit' + (isRed(s) ? ' red' : '') + '" data-bid="' + s + '" aria-label="Prendre à ' + SNAME[s] + '">' + SYM[s] + '</button>';
+        });
+        act += '<button class="btn ghost" data-bid="">Je passe</button>';
+      }
+    } else if (g.phase === 'play') {
+      msg = '<b>' + nm(v) + '</b>' + myTags + ', à toi de jouer.';
+      if (g.trick.length === 0) msg += ' Tu entames.';
+      handCls += ' play';
+    }
+
+    if (hideHand) {
+      for (i = 0; i < g.hands[v].length; i++) handHtml += backHtml();
+    } else {
+      var ok = g.phase === 'play' ? legal(v) : null;
+      g.hands[v].forEach(function (c, j) {
+        var cls = ok ? (ok.indexOf(c) >= 0 ? ' ok' : ' no') : '';
+        handHtml = handHtml + cardHtml(c, cls).replace('<div class="card', '<div data-card="' + j + '" class="card');
+      });
+    }
+    $('msg').innerHTML = msg;
+    $('actions').innerHTML = act;
+    var h = $('hand');
+    h.className = handCls;
+    h.innerHTML = handHtml;
+  }
+
+  // ---------- Fenêtres ----------
+  function showModal(inner) { $('sheet').innerHTML = inner; $('modal').hidden = false; }
+  function hideModal() { $('modal').hidden = true; }
+  var toastTimer = null;
+  function toast(t) {
+    var el = $('toast');
+    el.textContent = t; el.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.hidden = true; }, 1600);
+  }
+  function showLast() {
+    if (!g.lastTrick) {
+      showModal('<h2>Dernier pli</h2><p>Aucun pli ramassé pour l\'instant.</p><button class="btn" data-act="close">Fermer</button>');
+      return;
+    }
+    var row = g.lastTrick.cards.map(function (t) {
+      return '<div style="display:flex;flex-direction:column;align-items:center;gap:4px">' + cardHtml(t.c) +
+        '<small style="font-size:.72rem;color:var(--muted)">' + nm(t.p) + '</small></div>';
+    }).join('');
+    showModal('<h2>Dernier pli</h2><div class="row">' + row + '</div><p>Remporté par ' + nm(g.lastTrick.winner) + '.</p>' +
+      '<button class="btn" data-act="close">Fermer</button>');
+  }
+  function showMenu() {
+    showModal('<h2>Menu</h2>' +
+      '<button class="btn ghost" data-act="last">Voir le dernier pli</button>' +
+      '<button class="btn ghost" data-act="toggleHide">' + (g.hide ? 'Ne plus cacher le jeu entre les tours' : 'Cacher le jeu entre les tours') + '</button>' +
+      '<button class="btn ghost" data-act="confirmRedeal">Redistribuer cette donne</button>' +
+      '<button class="btn ghost" data-act="quit">Changer les joueurs</button>' +
+      '<button class="btn" data-act="close">Reprendre</button>');
+  }
+
+  // ---------- Événements ----------
+  $('startBtn').addEventListener('click', startGame);
+  $('menuBtn').addEventListener('click', showMenu);
+
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest ? e.target.closest('[data-act],[data-bid],[data-card]') : null;
+    if (!t || !g) return;
+    if (t.hasAttribute('data-card')) {
+      if (g.phase === 'play' && g.revealed) play(+t.getAttribute('data-card'));
+      return;
+    }
+    if (t.hasAttribute('data-bid')) {
+      if (g.phase === 'bid' && g.revealed) bid(t.getAttribute('data-bid') || null);
+      return;
+    }
+    switch (t.getAttribute('data-act')) {
+      case 'reveal': g.revealed = true; render(); break;
+      case 'collect': if (g.phase === 'trick') collect(); break;
+      case 'redeal': hideModal(); g.dealer = (g.dealer + 1) % 4; deal(); break;
+      case 'confirmRedeal':
+        showModal('<h2>Redistribuer ?</h2><p>La donne en cours est abandonnée et le même joueur redistribue.</p>' +
+          '<button class="btn" data-act="sameDeal">Oui, redistribuer</button><button class="btn ghost" data-act="close">Annuler</button>');
+        break;
+      case 'sameDeal': hideModal(); deal(); break;
+      case 'last': showLast(); break;
+      case 'toggleHide': g.hide = !g.hide; if (!g.hide) g.revealed = true; hideModal(); render(); break;
+      case 'quit': hideModal(); g = null; $('game').hidden = true; $('setup').hidden = false; break;
+      case 'close': hideModal(); break;
+    }
+  });
+})();
+</script>
+</body>
+</html>

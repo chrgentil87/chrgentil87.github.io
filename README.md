@@ -10,6 +10,7 @@ Outils de jeu pour l'atelier d'improvisation théâtrale de Saint-Junien : des p
 | --- | --- | --- |
 | [Personnages improbables](https://chrgentil87.github.io/impro-saint-junien/personnages-improbables.html) | 20 personnages loufoques, chacun avec un corps, une voix, une manie, un objectif et une réplique signature | Un joueur tire une carte et entre en scène avec ce personnage, sans jamais le nommer |
 | [Passages improbables](https://chrgentil87.github.io/impro-saint-junien/passages-improbables.html) | 20 trajets : un lieu de départ, un objet de ce lieu, un lieu d'arrivée | En duo, on installe le premier lieu, puis on utilise l'objet pour basculer dans le second |
+| [La'place](https://chrgentil87.github.io/impro-saint-junien/la-place.html) | Belote à quatre sur un seul appareil, sans compter les points | On se passe le téléphone : chacun touche l'écran pour voir son jeu quand c'est son tour |
 
 ## Utilisation
 
@@ -24,7 +25,8 @@ Outils de jeu pour l'atelier d'improvisation théâtrale de Saint-Junien : des p
 impro-saint-junien/
 ├── README.md                       ce fichier, qui sert aussi de page d'accueil du site
 ├── personnages-improbables.html
-└── passages-improbables.html
+├── passages-improbables.html
+└── la-place.html
 ```
 
 Chaque page est un fichier HTML autonome : ses styles et son script sont dans le fichier. Seules les polices viennent de Google Fonts ; sans elles, la page s'affiche avec les polices du téléphone.
